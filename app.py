@@ -55,8 +55,9 @@ def home():
 
 @app.route("/acquire", methods=["POST"])
 def acquire():
-    channel = request.json["channel"]
-    uid = request.json.get("uid", "0")
+    data = request.json
+    channel = data["channel"]
+    uid = str(data["uid"])
 
     url = f"https://api.agora.io/v1/apps/{APP_ID}/cloud_recording/acquire"
 
@@ -66,8 +67,13 @@ def acquire():
         "clientRequest": {}
     }
 
-    r = requests.post(url, headers=agora_auth(), json=payload)
-    return jsonify(r.json())
+    response = requests.post(
+        url,
+        auth=(CUSTOMER_ID, CUSTOMER_SECRET),
+        json=payload
+    )
+
+    return jsonify(response.json())
 
 
 # =========================================
