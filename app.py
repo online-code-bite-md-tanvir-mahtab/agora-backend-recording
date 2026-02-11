@@ -81,40 +81,57 @@ def acquire():
 # =========================================
 @app.route("/start", methods=["POST"])
 def start():
-    channel = request.json["channel"]
-    uid = request.json.get("uid", "0")
-    resource_id = request.json["resourceId"]
+    if not request.is_json:
+        return jsonify({"error": "Invalid content type, JSON required"}), 400
 
-    url = f"https://api.agora.io/v1/apps/{APP_ID}/cloud_recording/resourceid/{resource_id}/mode/composite/start"
+    data = request.json
+    channel = data.get("channel")
+    uid = data.get("uid", "0")
+    resource_id = data.get("resourceId")
+
+    if not all([channel, resource_id]):
+        return jsonify({"error": "Missing required fields: channel and resourceId"}), 400
+
+    url = f"https://api.agora.io/v1/apps/{APP_ID}/cloud_recording/resourceid/{resource_id}/mode/mix/start"
 
     payload = {
         "cname": channel,
         "uid": uid,
         "clientRequest": {
-            "token": "",
+            "token": "",  # Leave empty if using token-less join, or provide a valid RTC token
             "recordingConfig": {
-                "maxIdleTime": 30,
-                "streamTypes": 0,
-                "channelType": 0,
-                "videoStreamType": 0,
-                "postponeTranscoding": True
+                "maxIdleTime": 30,              # seconds before auto-stop if idle
+                "streamTypes": 0,               # 0 = audio+video, 3 = audio only (change to 3 for audio-only)
+                "channelType": 0,               # 0 = communication (1-on-1 or group call), 1 = live broadcast
+                "videoStreamType": 0,           # 0 = high quality, 1 = low quality
+                "postponeTranscoding": True     # Useful for some configs
             },
             "recordingFileConfig": {
-                "avFileType": ["m4a"]
+                "avFileType": ["m4a"]           # Good choice for audio-only; alternatives: ["mp3"], ["aac"]
             },
             "storageConfig": {
-                "vendor": 2,  # Google Cloud
-                "region": 0,
+                "vendor": 2,                    # 2 = Google Cloud Storage
+                "region": 0,                    # 0 = default/auto; check docs for your region code
                 "bucket": BUCKET_NAME,
                 "accessKey": AGORA_ACCESS_KEY,
-                "secretKey": AGORA_SECRET_KEY,
-                "fileNamePrefix": ["records"]
+                "secretKey": AGORA_SECRET_KEY,  # Note: use the correct var name if different
+                "fileNamePrefix": ["records"]   # Folder path in bucket
             }
         }
     }
 
-    r = requests.post(url, headers=agora_auth(), json=payload)
-    return jsonify(r.json())
+    try:
+        r = requests.post(url, headers=agora_auth(), json=payload, timeout=30)
+        r.raise_for_status()  # Raise exception for 4xx/5xx
+        response_data = r.json()
+        print("Start recording response:", response_data)
+        return jsonify(response_data)
+    except requests.exceptions.RequestException as e:
+        error_msg = str(e)
+        if r:
+            error_msg += f" - Response: {r.text}"
+        print("Start recording failed:", error_msg)
+        return jsonify({"error": error_msg}), 500
 
 
 # =========================================
