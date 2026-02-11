@@ -91,7 +91,7 @@ def start():
         "cname": channel,
         "uid": uid,
         "clientRequest": {
-            "token": "",  # Add RTC token here if your channel requires it
+            "token": "007eJxTYKjp4dAI9Hu87r/ev7jV6pvsBbzm+rnFVcRdWjqnO7bZ5L0Cg3GaRZJZsoGZsbFJqolFalJiqoVRkqVZqoWJZaKZUWLSlZ6ezIZARoaX5UbMjAwQCOLzMJSkFpfEJ2ck5uWl5jAwAABCXyLm",  # Add RTC token here if your channel requires it
             "recordingConfig": {
                 "maxIdleTime": 300,           # 5 minutes idle timeout
                 "streamTypes": 3,             # 3 = audio only (recommended for calls; use 2 if you want video too)
