@@ -85,7 +85,7 @@ def start():
     uid = request.json.get("uid", "0")
     resource_id = request.json["resourceId"]
 
-    url = f"https://api.agora.io/v1/apps/{APP_ID}/cloud_recording/resourceid/{resource_id}/mode/mix/start"
+    url = f"https://api.agora.io/v1/apps/{APP_ID}/cloud_recording/resourceid/{resource_id}/mode/composite/start"
 
     payload = {
         "cname": channel,
@@ -127,7 +127,7 @@ def stop():
     resource_id = request.json["resourceId"]
     sid = request.json["sid"]
 
-    url = f"https://api.agora.io/v1/apps/{APP_ID}/cloud_recording/resourceid/{resource_id}/sid/{sid}/mode/mix/stop"
+    url = f"https://api.agora.io/v1/apps/{APP_ID}/cloud_recording/resourceid/{resource_id}/sid/{sid}/mode/composite/stop"
 
     payload = {
         "cname": channel,
