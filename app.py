@@ -95,29 +95,31 @@ def start():
     url = f"https://api.agora.io/v1/apps/{APP_ID}/cloud_recording/resourceid/{resource_id}/mode/mix/start"
 
     payload = {
-        "cname": channel,
-        "uid": uid,
-        "clientRequest": {
-            "token": "",  # Leave empty if using token-less join, or provide a valid RTC token
-            "recordingConfig": {
-                "maxIdleTime": 30,              # seconds before auto-stop if idle
-                "streamTypes": 0,               # 0 = audio+video, 3 = audio only (change to 3 for audio-only)
-                "channelType": 0,               # 0 = communication (1-on-1 or group call), 1 = live broadcast
-                "videoStreamType": 0,           # 0 = high quality, 1 = low quality
-                "postponeTranscoding": True     # Useful for some configs
-            },
-            "recordingFileConfig": {
-                "avFileType": ["m4a"]           # Good choice for audio-only; alternatives: ["mp3"], ["aac"]
-            },
-            "storageConfig": {
-                "vendor": 2,                    # 2 = Google Cloud Storage
-                "region": 0,                    # 0 = default/auto; check docs for your region code
-                "bucket": BUCKET_NAME,
-                "accessKey": AGORA_ACCESS_KEY,
-                "secretKey": AGORA_SECRET_KEY,  # Note: use the correct var name if different
-                "fileNamePrefix": ["records"]   # Folder path in bucket
-            }
+    "cname": channel,
+    "uid": uid,
+    "clientRequest": {
+        "token": "",  # Empty OK if no token required; otherwise generate RTC token
+        "recordingConfig": {
+            "maxIdleTime": 300,           # Increase to 5 min – 30s is too aggressive
+            "streamTypes": 3,             # 3 = audio only (critical for .m4a audio-only)
+            "channelType": 0,             # 0 = communication mode
+            "audioProfile": 0,            # 0 = default (add if needed)
+            "audioCodecProfile": 0,
+            "postponeTranscoding": True
+        },
+        "recordingFileConfig": {
+            "avFileType": ["m4a"]         # Good choice
+        },
+        "storageConfig": {
+            "vendor": 2,                  # 2 = Google Cloud
+            "region": 0,                  # Confirm your GCS region (0 = us-east1 often works; check docs)
+            "bucket": BUCKET_NAME,
+            "accessKey": AGORA_ACCESS_KEY,
+            "secretKey": AGORA_SECRET_KEY,
+            "fileNamePrefix": ["records"] # Must be array, even if single item
         }
+    }
+
     }
 
     try:
