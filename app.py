@@ -91,24 +91,25 @@ def start():
         "cname": channel,
         "uid": uid,
         "clientRequest": {
-            "token": "",
+            "token": "",  # Add RTC token here if your channel requires it
             "recordingConfig": {
-                "maxIdleTime": 30,
-                "streamTypes": 0,
-                "channelType": 0,
-                "videoStreamType": 0,
-                "postponeTranscoding": True
+                "maxIdleTime": 300,           # 5 minutes idle timeout
+                "streamTypes": 3,             # 3 = audio only (recommended for calls; use 2 if you want video too)
+                "channelType": 0,             # 0 = communication mode
+                "audioProfile": 0,            # Default audio quality
+                "audioCodecProfile": 0,
+                "postponeTranscoding": True   # Helps with MP4 generation
             },
             "recordingFileConfig": {
-                "avFileType": ["m4a"]
+                "avFileType": ["hls", "mp4"]  # Required for MP4 output in mix mode
             },
             "storageConfig": {
-                "vendor": 2,  # Google Cloud
-                "region": 0,
+                "vendor": 2,                  # 2 = Google Cloud Storage
+                "region": 0,                  # Adjust if your bucket is in a specific region (check Agora docs)
                 "bucket": BUCKET_NAME,
                 "accessKey": AGORA_ACCESS_KEY,
                 "secretKey": AGORA_SECRET_KEY,
-                "fileNamePrefix": ["records"]
+                "fileNamePrefix": ["records"] # Prefix for files in bucket
             }
         }
     }
