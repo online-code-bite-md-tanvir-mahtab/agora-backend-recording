@@ -1,8 +1,12 @@
+import datetime
+import json
 import os
 import base64
 import requests
 from flask import Flask, request, jsonify
 from google.cloud import storage
+from google.oauth2 import service_account
+
 
 # ================= CONFIG =================
 
@@ -15,7 +19,13 @@ AGORA_ACCESS_KEY = os.environ.get("AGORA_GCS_ACCESS_KEY")
 AGORA_SECRET_KEY = os.environ.get("AGORA_GCS_SECRET_KEY")
 BUCKET_NAME = os.environ.get("AGORA_BUCKET_NAME")
 
-os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "service_account.json"
+service_account_info = json.loads(os.environ["GOOGLE_SERVICE_ACCOUNT"])
+
+credentials = service_account.Credentials.from_service_account_info(
+    service_account_info
+)
+
+storage_client = storage.Client(credentials=credentials)
 
 # =========================================
 
@@ -131,13 +141,38 @@ def webhook():
     data = request.json
     print("Webhook received:", data)
 
-    # here you know recording is finished
-    # you can:
-    # - download from bucket
-    # - upload to gofile
-    # - run speech to text
+    try:
+        service_account_info = json.loads(os.environ["GOOGLE_SERVICE_ACCOUNT"])
+        credentials = service_account.Credentials.from_service_account_info(
+            service_account_info
+        )
 
-    return jsonify({"status": "ok"})
+        storage_client = storage.Client(credentials=credentials)
+        bucket = storage_client.bucket("your-bucket-name")
+
+        file_list = data.get("payload", {}).get("fileList", [])
+        download_links = []
+
+        for file_info in file_list:
+            file_name = file_info.get("fileName")
+            blob = bucket.blob(file_name)
+
+            url = blob.generate_signed_url(
+                version="v4",
+                expiration=datetime.timedelta(hours=1),
+                method="GET",
+            )
+
+            download_links.append({
+                "file_name": file_name,
+                "download_url": url
+            })
+
+        return jsonify({"files": download_links})
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 
 
 # =========================================
