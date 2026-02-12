@@ -98,11 +98,7 @@ def start():
                 "channelType": 0,             # 0 = communication mode
                 "audioProfile": 0,            # Default audio quality
                 "audioCodecProfile": 0,
-                "postponeTranscoding": True,   # Helps with MP4 generation
-                "addOn": {
-        "transcribe": True,          # Enable STT
-        "languageCode": "en-US"     # Choose language
-    }
+                "postponeTranscoding": True   # Helps with MP4 generation
             },
             "recordingFileConfig": {
                 "avFileType": ["hls", "mp4"]  # Required for MP4 output in mix mode
@@ -111,6 +107,8 @@ def start():
                 "vendor": 1,                  # 2 = Google Cloud Storage
                 "region": 5,                  # Adjust if your bucket is in a specific region (check Agora docs)
                 "bucket": BUCKET_NAME,
+                "accessKey": AGORA_ACCESS_KEY,
+                "secretKey": AGORA_SECRET_KEY,
                 "fileNamePrefix": ["records"] # Prefix for files in bucket
             }
         }
