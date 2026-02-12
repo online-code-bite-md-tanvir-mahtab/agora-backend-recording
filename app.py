@@ -107,8 +107,8 @@ def start():
                 "vendor": 2,                  # 2 = Google Cloud Storage
                 "region": 14,                  # Adjust if your bucket is in a specific region (check Agora docs)
                 "bucket": BUCKET_NAME,
-                "accessKey": "GOOG1ES27ZAIJZQKDI7P4UJS5PWGQUWIJGHJ5EPZSKKYDHPFL6ZKNRCSGLRXD",
-                "secretKey": "+BRHVLDwqLO5pm3YQDZzS59BXQtM2LZTe04VyiyF",
+                "accessKey": AGORA_ACCESS_KEY,
+                "secretKey": AGORA_SECRET_KEY,
                 "fileNamePrefix": ["records"] # Prefix for files in bucket
             }
         }
