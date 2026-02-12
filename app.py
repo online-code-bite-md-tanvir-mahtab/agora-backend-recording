@@ -139,6 +139,22 @@ def stop():
     r = requests.post(url, headers=agora_auth(), json=payload)
     return jsonify(r.json())
 
+# =========================================
+# Query recording status
+# =========================================
+@app.route("/query", methods=["POST"])
+def query_recording():
+    data = request.json
+
+    resource_id = data["resourceId"]
+    sid = data["sid"]
+
+    url = f"https://api.agora.io/v1/apps/{APP_ID}/cloud_recording/resourceid/{resource_id}/sid/{sid}/mode/mix/query"
+
+    r = requests.get(url, headers=agora_auth())
+
+    return jsonify(r.json())
+
 
 # =========================================
 # Webhook from Agora
