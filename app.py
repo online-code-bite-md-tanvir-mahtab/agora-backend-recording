@@ -105,7 +105,7 @@ def start():
             },
             "storageConfig": {
                 "vendor": 2,                  # 2 = Google Cloud Storage
-                "region": 15,                  # Adjust if your bucket is in a specific region (check Agora docs)
+                "region": 14,                  # Adjust if your bucket is in a specific region (check Agora docs)
                 "bucket": BUCKET_NAME,
                 "accessKey": AGORA_ACCESS_KEY,
                 "secretKey": AGORA_SECRET_KEY,
