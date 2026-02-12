@@ -104,8 +104,8 @@ def start():
                 "avFileType": ["hls", "mp4"]  # Required for MP4 output in mix mode
             },
             "storageConfig": {
-                "vendor": 1,                  # 2 = Google Cloud Storage
-                "region": 5,                  # Adjust if your bucket is in a specific region (check Agora docs)
+                "vendor": 6,                  # 2 = Google Cloud Storage
+                "region": 0,                  # Adjust if your bucket is in a specific region (check Agora docs)
                 "bucket": BUCKET_NAME,
                 "accessKey": AGORA_ACCESS_KEY,
                 "secretKey": AGORA_SECRET_KEY,
