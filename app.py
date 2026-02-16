@@ -141,6 +141,7 @@ def stop():
     }
 
     r = requests.post(url, headers=agora_auth(), json=payload)
+    print("Stop recording response:", r.status_code, r.text)
     return jsonify(r.json())
 
 # =========================================
