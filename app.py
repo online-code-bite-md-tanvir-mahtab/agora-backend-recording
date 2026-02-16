@@ -18,6 +18,9 @@ CUSTOMER_SECRET = os.environ.get("AGORA_CUSTOMER_SECRET")
 AGORA_ACCESS_KEY = os.environ.get("AGORA_GCS_ACCESS_KEY")
 AGORA_SECRET_KEY = os.environ.get("AGORA_GCS_SECRET_KEY")
 BUCKET_NAME = os.environ.get("AGORA_BUCKET_NAME")
+SIG_SIP_URI = os.environ.get("SIGNALWIRE_SIP_URI")
+SIG_USERNAME = os.environ.get("SIGNALWIRE_USERNAME")
+SIG_PASSWORD = os.environ.get("SIGNALWIRE_PASSWORD")
 
 service_account_info = json.loads(os.environ["GOOGLE_SERVICE_ACCOUNT"])
 
@@ -195,6 +198,56 @@ def webhook():
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+def agora_auth_header():
+    credentials = f"{CUSTOMER_ID}:{CUSTOMER_SECRET}"
+    encoded = base64.b64encode(credentials.encode()).decode()
+    return {
+        "Authorization": f"Basic {encoded}",
+        "Content-Type": "application/json"
+    }
+
+
+# ==============================
+# Route → make phone call
+# ==============================
+@app.route("/make-call", methods=["POST"])
+def make_call():
+    data = request.json
+
+    channel = data.get("channel")
+    phone_number = data.get("phone")
+    token = data.get("token")  # token for SIP bot uid
+    uid = data.get("uid", 111)
+
+    if not channel or not phone_number or not token:
+        return jsonify({"error": "missing data"}), 400
+
+    url = f"https://api.agora.io/v1/projects/{APP_ID}/sip-gateway/nodes"
+
+    payload = {
+        "rtcConfig": {
+            "channelName": channel,
+            "uid": uid,
+            "token": token
+        },
+        "sipConfig": {
+            "uri": SIG_SIP_URI,
+            "username": SIG_USERNAME,
+            "password": SIG_PASSWORD,
+            "callee": phone_number
+        }
+    }
+
+    response = requests.post(
+        url,
+        headers=agora_auth_header(),
+        json=payload
+    )
+
+    return jsonify(response.json()), response.status_code
+
 
 
 
