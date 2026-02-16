@@ -200,13 +200,6 @@ def webhook():
         return jsonify({"error": str(e)}), 500
 
 
-def agora_auth_header():
-    credentials = f"{CUSTOMER_ID}:{CUSTOMER_SECRET}"
-    encoded = base64.b64encode(credentials.encode()).decode()
-    return {
-        "Authorization": f"Basic {encoded}",
-        "Content-Type": "application/json"
-    }
 
 
 # ==============================
@@ -242,7 +235,7 @@ def make_call():
 
     response = requests.post(
         url,
-        headers=agora_auth_header(),
+        headers=agora_auth(),
         json=payload
     )
 
