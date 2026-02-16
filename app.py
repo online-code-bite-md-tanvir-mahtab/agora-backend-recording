@@ -66,7 +66,7 @@ def acquire():
 
     payload = {
         "cname": channel,
-        "uid": uid,
+        "uid": "0",
         "clientRequest": {}
     }
 
