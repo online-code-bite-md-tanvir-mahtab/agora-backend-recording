@@ -130,6 +130,7 @@ def stop():
     uid = request.json.get("uid", "0")
     resource_id = request.json["resourceId"]
     sid = request.json["sid"]
+    print("Stopping recording for resource:", resource_id, "sid:", sid, "channel:", channel, "uid:", uid)
 
     url = f"https://api.agora.io/v1/apps/{APP_ID}/cloud_recording/resourceid/{resource_id}/sid/{sid}/mode/mix/stop"
 
