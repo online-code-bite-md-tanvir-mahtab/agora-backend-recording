@@ -94,7 +94,7 @@ def start():
         "cname": channel,
         "uid": uid,
         "clientRequest": {
-            "token": "007eJxTYKjp4dAI9Hu87r/ev7jV6pvsBbzm+rnFVcRdWjqnO7bZ5L0Cg3GaRZJZsoGZsbFJqolFalJiqoVRkqVZqoWJZaKZUWLSlZ6ezIZARoaX5UbMjAwQCOLzMJSkFpfEJ2ck5uWl5jAwAABCXyLm",  # Add RTC token here if your channel requires it
+            "token": "007eJxTYCiacH7W7OVrW1Q57ZICUp3UnC7nbhe9qJu3m2ka62EnyUYFBnNjg+S01ERLE/O0NJO0ZMukNOPUtLRUo5SklFRTy1QzdZbJmQ2BjAzf058xMjJAIIjPw1CSWlwSn5yRmJeXmsPAAADwwCH9",  # Add RTC token here if your channel requires it
             "recordingConfig": {
                 "maxIdleTime": 300,           # 5 minutes idle timeout
                 "streamTypes": 3,             # 3 = audio only (recommended for calls; use 2 if you want video too)
@@ -214,7 +214,7 @@ def make_call():
     channel = data.get("channel")
     phone_number = data.get("phone")
     token = data.get("token")  # token for SIP bot uid
-    uid = data.get("uid", 111)
+    uid = data.get("uid", 0)
 
     if not channel or not phone_number or not token:
         return jsonify({"error": "missing data"}), 400
