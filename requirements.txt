@@ -2,3 +2,4 @@ Flask
 requests
 google-cloud-storage
 python-dotenv
+twilio
