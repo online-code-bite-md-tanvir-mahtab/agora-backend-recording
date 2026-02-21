@@ -307,6 +307,18 @@ def voice():
 
     return Response(str(resp), mimetype='text/xml')
 
+
+@app.route('/webhook/call-events', methods=['POST'])
+def pstn_webhook():
+    data = request.json
+    print("PSTN Webhook received:", data)
+    # Log to file/console or send to your Flutter app via push/FCM
+    if data.get('event') == 'agora_bridge_start':
+        print("AUDIO BRIDGE SUCCESSFULLY STARTED!")
+    elif data.get('event') == 'agora_bridge_end':
+        print("Bridge ended")
+    return '', 204
+
 # Optional: Status callback if you want to trigger Agora recording start/stop
 @app.route('/call-status', methods=['POST'])
 def call_status():
