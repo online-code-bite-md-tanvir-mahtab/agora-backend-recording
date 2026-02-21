@@ -3,9 +3,13 @@ import json
 import os
 import base64
 import requests
-from flask import Flask, request, jsonify
+from flask import Flask, Response, request, jsonify
 from google.cloud import storage
 from google.oauth2 import service_account
+from twilio.jwt.access_token import AccessToken
+from twilio.jwt.access_token.grants import VoiceGrant
+from twilio.twiml.voice_response import VoiceResponse, Dial, Say
+from twilio.rest import Client
 
 
 # ================= CONFIG =================
@@ -21,6 +25,13 @@ BUCKET_NAME = os.environ.get("AGORA_BUCKET_NAME")
 SIG_SIP_URI = os.environ.get("SIGNALWIRE_SIP_URI")
 SIG_USERNAME = os.environ.get("SIGNALWIRE_USERNAME")
 SIG_PASSWORD = os.environ.get("SIGNALWIRE_PASSWORD")
+
+account_sid = os.getenv('TWILIO_ACCOUNT_SID')
+auth_token = os.getenv('TWILIO_AUTH_TOKEN') 
+twiml_app_sid = os.getenv('TWIML_APP_SID')
+api_key_sid = os.getenv('TWILIO_API_KEY_SID') 
+api_key_secret = os.getenv('TWILIO_API_KEY_SECRET') 
+your_twilio_number = os.getenv('TWILIO_PHONE_NUMBER')   # +15078703438
 
 service_account_info = json.loads(os.environ["GOOGLE_SERVICE_ACCOUNT"])
 
@@ -243,8 +254,76 @@ def make_call():
 
     return jsonify(response.json()), response.status_code
 
+# ===============
+# Twilio test route
+# ===============
 
+client = Client(account_sid, auth_token)
 
+@app.route('/token', methods=['POST'])
+def get_access_token():
+    identity = request.json.get('identity')  # e.g. "user_123" — must match what you register in Flutter
+    if not identity:
+        return jsonify({"error": "identity required"}), 400
+
+    token = AccessToken(
+        account_sid,
+        api_key_sid,
+        api_key_secret,
+        identity=identity
+    )
+
+    voice_grant = VoiceGrant(
+        outgoing_application_sid=twiml_app_sid,
+        incoming_allow=True
+        # push_credential_sid=...  ← add later if you want push for incoming
+    )
+    token.add_grant(voice_grant)
+
+    return jsonify({"token": token.to_jwt().decode()})
+
+from twilio.twiml.voice_response import VoiceResponse, Dial, Say
+# ... other imports ...
+
+@app.route('/voice', methods=['POST'])
+def voice():
+    resp = VoiceResponse()
+
+    # Optional: Custom welcome (Agora will still prompt for PIN after this)
+    resp.say("Welcome to the audio session. Please enter your PIN when prompted.", voice="Polly.Joanna")
+
+    dial = Dial(callerId="+15078703438")  # your existing number
+
+    # Use the regional SIP URI Agora provided – pick closest to your users
+    sip_uri = "sip:agora736.pstn.ashburn.twilio.com"  # Virginia (US East) – change as needed
+
+    # Optional: Add parameters if Agora requires (rare)
+    # sip_uri += ";transport=tcp"
+
+    dial.sip(sip_uri)
+    dial.timeout = 60  # Give time for PIN entry
+
+    resp.append(dial)
+
+    return Response(str(resp), mimetype='text/xml')
+
+# Optional: Status callback if you want to trigger Agora recording start/stop
+@app.route('/call-status', methods=['POST'])
+def call_status():
+    call_status = request.values.get('CallStatus')
+    call_sid = request.values.get('CallSid')
+
+    if call_status in ['in-progress', 'ringing']:
+        # Trigger Agora cloud recording start here (your existing code)
+        print(f"Call {call_sid} in progress → start Agora recording")
+        # your_agora_start_recording_logic(call_sid)
+
+    elif call_status in ['completed', 'no-answer', 'busy']:
+        # Trigger Agora stop/delete
+        print(f"Call {call_sid} ended → stop Agora recording")
+        # your_agora_stop_recording_logic(call_sid)
+
+    return '', 204
 
 # =========================================
 
