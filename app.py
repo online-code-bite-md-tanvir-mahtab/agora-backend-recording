@@ -25,6 +25,7 @@ BUCKET_NAME = os.environ.get("AGORA_BUCKET_NAME")
 SIG_SIP_URI = os.environ.get("SIGNALWIRE_SIP_URI")
 SIG_USERNAME = os.environ.get("SIGNALWIRE_USERNAME")
 SIG_PASSWORD = os.environ.get("SIGNALWIRE_PASSWORD")
+TOKEN = os.environ.get("AGORA_TOKEN")  # Optional: only needed if your channel requires a token for recording
 
 account_sid = os.getenv('TWILIO_ACCOUNT_SID')
 auth_token = os.getenv('TWILIO_AUTH_TOKEN') 
@@ -105,7 +106,7 @@ def start():
         "cname": channel,
         "uid": uid,
         "clientRequest": {
-            "token": "007eJxTYCiacH7W7OVrW1Q57ZICUp3UnC7nbhe9qJu3m2ka62EnyUYFBnNjg+S01ERLE/O0NJO0ZMukNOPUtLRUo5SklFRTy1QzdZbJmQ2BjAzf058xMjJAIIjPw1CSWlwSn5yRmJeXmsPAAADwwCH9",  # Add RTC token here if your channel requires it
+            "token": TOKEN,  # Add RTC token here if your channel requires it
             "recordingConfig": {
                 "maxIdleTime": 300,           # 5 minutes idle timeout
                 "streamTypes": 3,             # 3 = audio only (recommended for calls; use 2 if you want video too)
@@ -336,6 +337,34 @@ def call_status():
         # your_agora_stop_recording_logic(call_sid)
 
     return '', 204
+
+
+@app.route('/generate-inbound', methods=['POST'])
+def generate_inbound():
+    data = request.json
+    channel = data.get('channel', 'test_channel')
+
+    # Call Agora API
+    resp = requests.post(
+        'https://sipcm.agora.io/v1/api/pstn',
+        headers={
+            'Authorization': 'Basic kV7mZp3xBw1QrT9nYj6Lf2HcUo8EgS4dAiX5tR',
+            'Content-Type': 'application/json'
+        },
+        json={
+            "action": "inbound",
+            "appid": APP_ID,
+            "region": "AREA_CODE_NA",
+            "uid": "0",
+            "channel": channel,
+            "token": TOKEN,  # Add RTC token here if your channel requires it
+        }
+    )
+
+    if resp.status_code == 200:
+        return jsonify(resp.json()), 200
+    else:
+        return jsonify({"error": resp.text}), 500
 
 # =========================================
 
