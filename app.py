@@ -385,7 +385,7 @@ def inbound_call():
     dial = Dial()
     
     # Use one of your provisioned regional SIP URIs
-    sip_uri = "sip:agora736.pstn.ashburn.twilio.com"  # ← change region if needed
+    sip_uri = "sip:pstn_630574000493063@52.3.185.227:5080"  # ← change region if needed
     
     # Optional: add custom headers if Agora can use them for channel routing
     # sip_uri += ";X-Channel=test_channel"
