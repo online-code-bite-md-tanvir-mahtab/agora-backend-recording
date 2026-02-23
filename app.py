@@ -385,10 +385,10 @@ def inbound_call():
                 "token": TOKEN
             },
             "sipConfig": {
-                "uri": "sip:yourdomain.pstn.ashburn.twilio.com",
+                "uri": "sip:agora736.pstn.ashburn.twilio.com",
                 "username": "tanvir736",
                 "password": "01955005706#@Tan",
-                "callee": "+8801716236415"
+                "callee": from_number
             }
         }
     )
