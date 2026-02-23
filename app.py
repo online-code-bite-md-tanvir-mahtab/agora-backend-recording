@@ -2,6 +2,7 @@ import datetime
 import json
 import os
 import base64
+import token
 import requests
 from flask import Flask, Response, request, jsonify
 from google.cloud import storage
@@ -366,38 +367,36 @@ def generate_inbound():
     else:
         return jsonify({"error": resp.text}), 500
     
-@app.route("/inbound", methods=["POST"])
+@app.route("/twilio/inbound", methods=["POST"])
 def inbound_call():
     from_number = request.values.get("From")
-    call_sid = request.values.get("CallSid")
 
-    print(f"Incoming call from {from_number} - SID: {call_sid}")
 
-    # Optional: Log or notify your app via FCM here
-    # send_fcm_push_to_user(from_number, call_sid)
+    # 2. Call Agora SIP Gateway
+    requests.post(
+        f"https://api.agora.io/v1/projects/{APP_ID}/sip-gateway/nodes",
+        headers={
+            'Authorization': 'Basic kV7mZp3xBw1QrT9nYj6Lf2HcUo8EgS4dAiX5tR',
+            'Content-Type': 'application/json'
+        },
+        json={
+            "rtcConfig": {
+                "channelName": "test_channel",
+                "uid": "0",
+                "token": TOKEN
+            },
+            "sipConfig": {
+                "uri": "sip:yourdomain.pstn.ashburn.twilio.com",
+                "username": "tanvir736",
+                "password": "01955005706#@Tan",
+                "callee": from_number
+            }
+        }
+    )
 
+    # 3. Tell Twilio to keep call open
     resp = VoiceResponse()
-
-    # Play a short greeting
-    resp.say("Connecting you to the channel now. Please stay on the line.", voice="Polly.Joanna")
-
-    # Attempt to bridge directly to Agora gateway
-    dial = Dial()
-    
-    # Use one of your provisioned regional SIP URIs
-    sip_uri = "sip:pstn_630574000493063@52.3.185.227:5080"  # ← change region if needed
-    
-    # Optional: add custom headers if Agora can use them for channel routing
-    # sip_uri += ";X-Channel=test_channel"
-    
-    dial.sip(sip_uri)
-    dial.timeout = 60  # give enough time
-
-    resp.append(dial)
-
-    # If bridge fails or caller hangs up → fallback message
-    resp.say("The session has ended. Goodbye.")
-
+    resp.say("Please wait while we connect your call.")
     return Response(str(resp), mimetype="text/xml")
 
 # =========================================
