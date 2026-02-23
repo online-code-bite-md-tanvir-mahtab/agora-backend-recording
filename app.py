@@ -352,19 +352,51 @@ def generate_inbound():
             'Content-Type': 'application/json'
         },
         json={
-            "action": "inbound",
-            "appid": APP_ID,
-            "region": "AREA_CODE_NA",
-            "uid": "0",
-            "channel": channel,
-            "token": TOKEN,  # Add RTC token here if your channel requires it
-        }
+  "action":"inboundsip",
+  "appid":APP_ID,
+  "token":TOKEN,
+  "uid":"0",
+  "channel":channel,
+  "region":"AREA_CODE_NA"
+}
     )
 
     if resp.status_code == 200:
         return jsonify(resp.json()), 200
     else:
         return jsonify({"error": resp.text}), 500
+    
+@app.route("/inbound", methods=["POST"])
+def inbound_call():
+    from_number = request.values.get("From")
+
+
+    # 2. Call Agora SIP Gateway
+    requests.post(
+        f"https://api.agora.io/v1/projects/{APP_ID}/sip-gateway/nodes",
+        headers={
+            'Authorization': 'Basic kV7mZp3xBw1QrT9nYj6Lf2HcUo8EgS4dAiX5tR',
+            'Content-Type': 'application/json'
+        },
+        json={
+            "rtcConfig": {
+                "channelName": "test_channel",
+                "uid": 0,
+                "token": TOKEN
+            },
+            "sipConfig": {
+                "uri": "sip:yourdomain.pstn.ashburn.twilio.com",
+                "username": "tanvir736",
+                "password": "01955005706#@Tan",
+                "callee": "+8801714988723"
+            }
+        }
+    )
+
+    # 3. Tell Twilio to keep call open
+    resp = VoiceResponse()
+    resp.say("Please wait while we connect your call.")
+    return Response(str(resp), mimetype="text/xml")
 
 # =========================================
 
