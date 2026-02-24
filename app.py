@@ -370,34 +370,30 @@ def generate_inbound():
 @app.route("/inbound", methods=["POST"])
 def inbound_call():
     from_number = request.values.get("From")
+    call_sid = request.values.get("CallSid")
 
+    print(f"Incoming call from {from_number} - SID: {call_sid}")
 
-    # 2. Call Agora SIP Gateway
-    res = requests.post(
-        f"https://api.agora.io/v1/projects/{APP_ID}/sip-gateway/nodes",
-        headers={
-            'Authorization': 'Basic kV7mZp3xBw1QrT9nYj6Lf2HcUo8EgS4dAiX5tR',
-            'Content-Type': 'application/json'
-        },
-        json={
-            "rtcConfig": {
-                "channelName": "test_channel",
-                "uid": "0",
-                "token": TOKEN
-            },
-            "sipConfig": {
-                "uri": "sip:agora736.pstn.ashburn.twilio.com",
-                "username": "tanvir736",
-                "password": "01955005706#@Tan",
-                "callee": from_number
-            }
-        }
-    )
-    print("Agora SIP Gateway response:", res.status_code, res.text)
-
-    # 3. Tell Twilio to keep call open
     resp = VoiceResponse()
-    resp.say("Please wait while we connect your call.")
+
+    # Short greeting (keep it brief)
+    resp.say("Connecting you to the session now. Please hold.", voice="Polly.Joanna")
+
+    # Bridge directly to Agora's SIP gateway
+    dial = Dial(callerId="+15078703438")  # optional: your Twilio caller ID
+    sip_uri = "sip:agora736.pstn.ashburn.twilio.com"  # ← use your region (ashburn, umatilla, etc.)
+
+    # Optional: add custom parameters if Agora can read them (rare)
+    # sip_uri += ";X-Channel=test_channel"
+
+    dial.sip(sip_uri)
+    dial.timeout = 60  # seconds to keep trying
+
+    resp.append(dial)
+
+    # Fallback if bridge fails
+    resp.say("Sorry, we couldn't connect you right now. Goodbye.")
+
     return Response(str(resp), mimetype="text/xml")
 
 # =========================================
