@@ -361,7 +361,7 @@ def generate_inbound():
   "region":"AREA_CODE_NA"
 }
     )
-
+    print("Agora API response:", resp.status_code, resp.text)
     if resp.status_code == 200:
         return jsonify(resp.json()), 200
     else:
