@@ -373,7 +373,7 @@ def inbound_call():
 
 
     # 2. Call Agora SIP Gateway
-    requests.post(
+    res = requests.post(
         f"https://api.agora.io/v1/projects/{APP_ID}/sip-gateway/nodes",
         headers={
             'Authorization': 'Basic kV7mZp3xBw1QrT9nYj6Lf2HcUo8EgS4dAiX5tR',
@@ -393,6 +393,7 @@ def inbound_call():
             }
         }
     )
+    print("Agora SIP Gateway response:", res.status_code, res.text)
 
     # 3. Tell Twilio to keep call open
     resp = VoiceResponse()
