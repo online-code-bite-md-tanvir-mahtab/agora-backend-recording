@@ -376,23 +376,23 @@ def inbound_call():
 
     resp = VoiceResponse()
 
-    # Short greeting (keep it brief)
-    resp.say("Connecting you to the session now. Please hold.", voice="Polly.Joanna")
+    # Short greeting so caller doesn't hear silence
+    resp.say("Connecting you to the session. Please hold.", voice="Polly.Joanna")
 
-    # Bridge directly to Agora's SIP gateway
-    dial = Dial(callerId="+15078703438")  # optional: your Twilio caller ID
-    sip_uri = "sip:agora736.pstn.ashburn.twilio.com"  # ← use your region (ashburn, umatilla, etc.)
+    # This is the critical part: bridge to Agora's SIP gateway
+    dial = Dial(callerId="+15078703438")  # optional - your number as caller ID
+    sip_uri = "sip:agora736.pstn.ashburn.twilio.com"  # your regional URI
 
-    # Optional: add custom parameters if Agora can read them (rare)
+    # Optional: add custom parameters if Agora can read them
     # sip_uri += ";X-Channel=test_channel"
 
     dial.sip(sip_uri)
-    dial.timeout = 60  # seconds to keep trying
+    dial.timeout = 60  # allow time for connection/PIN prompt
 
     resp.append(dial)
 
-    # Fallback if bridge fails
-    resp.say("Sorry, we couldn't connect you right now. Goodbye.")
+    # Fallback message if bridge fails or caller hangs up
+    resp.say("The session has ended. Goodbye.")
 
     return Response(str(resp), mimetype="text/xml")
 
