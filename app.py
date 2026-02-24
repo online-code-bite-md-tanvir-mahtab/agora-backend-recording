@@ -396,6 +396,23 @@ def inbound_call():
 
     return Response(str(resp), mimetype="text/xml")
 
+
+@app.route('/twilio/call-lookup', methods=['POST'])
+def call_lookup():
+    # Optional: read To/From/CallSid if you want dynamic logic later
+    # to_number = request.values.get('To')
+    # from_number = request.values.get('From')
+
+    # For now: fixed channel + generate token if needed
+    token = get_access_token("test_channel", 0)  # your token function
+
+    return jsonify({
+        "channel": "test_channel",
+        "uid": 0,
+        "token": TOKEN
+    })
+
+
 # =========================================
 
 # if __name__ == "__main__":
