@@ -367,7 +367,7 @@ def generate_inbound():
     else:
         return jsonify({"error": resp.text}), 500
     
-@app.route("/twilio/inbound", methods=["POST"])
+@app.route("/inbound", methods=["POST"])
 def inbound_call():
     from_number = request.values.get("From")
 
