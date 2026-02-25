@@ -374,27 +374,56 @@ def inbound_call():
 
     print(f"Incoming call from {from_number} - SID: {call_sid}")
 
-    resp = VoiceResponse()
+    # 1. Generate the SIP URI for this session
+    resp = requests.post(
+        'https://sipcm.agora.io/v1/api/pstn',
+        headers={
+            'Authorization': 'Basic kV7mZp3xBw1QrT9nYj6Lf2HcUo8EgS4dAiX5tR',
+            'Content-Type': 'application/json'
+        },
+        json={
+            "action": "inboundsip",
+            "appid": APP_ID,
+            "token": TOKEN,
+            "uid": "0",
+            "channel": "test_channel",  # or dynamic
+            "region": "AREA_CODE_NA"
+        }
+    )
 
-    # Short greeting so caller doesn't hear silence
-    resp.say("Connecting you to the session. Please hold.", voice="Polly.Joanna")
+    if resp.status_code != 200:
+        print("Failed to get SIP URI:", resp.text)
+        # Fallback TwiML
+        vr = VoiceResponse()
+        vr.say("Sorry, we couldn't connect you right now.")
+        vr.hangup()
+        return Response(str(vr), mimetype="text/xml")
 
-    # This is the critical part: bridge to Agora's SIP gateway
-    dial = Dial(callerId="+15078703438")  # optional - your number as caller ID
-    sip_uri = "sip:agora736.pstn.ashburn.twilio.com"  # your regional URI
+    sip_data = resp.json()
+    sip_uri = sip_data.get("sip")
 
-    # Optional: add custom parameters if Agora can read them
-    # sip_uri += ";X-Channel=test_channel"
+    if not sip_uri:
+        print("No SIP URI returned")
+        vr = VoiceResponse()
+        vr.say("Sorry, connection failed.")
+        vr.hangup()
+        return Response(str(vr), mimetype="text/xml")
 
+    print("Using SIP URI:", sip_uri)
+
+    # 2. Return TwiML to bridge to the returned SIP URI
+    vr = VoiceResponse()
+    vr.say("Connecting you now. Please hold.", voice="Polly.Joanna")
+
+    dial = Dial(callerId="+15078703438")  # optional - your caller ID
     dial.sip(sip_uri)
-    dial.timeout = 60  # allow time for connection/PIN prompt
+    dial.timeout = 60
 
-    resp.append(dial)
+    vr.append(dial)
 
-    # Fallback message if bridge fails or caller hangs up
-    resp.say("The session has ended. Goodbye.")
+    vr.say("The session has ended. Goodbye.")
 
-    return Response(str(resp), mimetype="text/xml")
+    return Response(str(vr), mimetype="text/xml")
 
 
 @app.route('/twilio/call-lookup', methods=['POST'])
