@@ -12,6 +12,9 @@ from twilio.jwt.access_token.grants import VoiceGrant
 from twilio.twiml.voice_response import VoiceResponse, Dial, Say
 from twilio.rest import Client
 
+import firebase_admin
+from firebase_admin import credentials, messaging
+
 
 # ================= CONFIG =================
 
@@ -42,6 +45,12 @@ credentials = service_account.Credentials.from_service_account_info(
 )
 
 storage_client = storage.Client(credentials=credentials)
+
+# Initialize Firebase Admin ONCE at startup
+service_account_json = os.getenv("FIREBASE_SERVICE_ACCOUNT")
+cred = credentials.Certificate(json.loads(service_account_json))
+firebase_admin.initialize_app(cred)
+db = firebase_admin.firestore.client()  # or your preferred database client
 
 # =========================================
 
@@ -411,6 +420,48 @@ def inbound_call():
 
     print("Using SIP URI:", sip_uri)
 
+    # for fcm push notifications to Flutter app, you can send the call_sid or other identifiers here so your app can correlate and display incoming call UI
+# 1. Find FCM token for the user who owns this Twilio number
+    # Replace with your real DB lookup
+    user_fcm_token = db.users.find_one({'twilio_number': "+15078703438"})['fcm_token']  # ← get from your database
+
+    if user_fcm_token:
+        message = messaging.Message(
+            notification=messaging.Notification(
+                title="Incoming Call",
+                body=f"Call from {from_number}",
+            ),
+            data={
+                'call_sid': call_sid,
+                'caller': from_number,
+                'type': 'incoming_call',
+                'channel': 'test_channel'  # or dynamic
+            },
+            token=user_fcm_token,
+            android=messaging.AndroidConfig(
+                priority='high',
+                notification=messaging.AndroidNotification(
+                    sound='default',
+                    channel_id='call_notifications'  # create high-priority channel in app
+                )
+            ),
+            apns=messaging.APNSConfig(
+                payload=messaging.APNSPayload(
+                    aps=messaging.Aps(
+                        alert=messaging.ApsAlert(title="Incoming Call", body=f"Call from {from_number}"),
+                        sound='default',
+                        badge=1,
+                        category='CALL',
+                    )
+                )
+            ),
+        )
+
+        try:
+            response = messaging.send(message)
+            print("FCM push sent successfully:", response)
+        except Exception as e:
+            print("FCM push failed:", e)
     # 2. Return TwiML to bridge to the returned SIP URI
     vr = VoiceResponse()
     vr.say("Connecting you now. Please hold.", voice="Polly.Joanna")
@@ -441,6 +492,24 @@ def call_lookup():
         "token": TOKEN
     })
 
+
+@app.route('/save-fcm-token', methods=['POST'])
+def save_fcm_token():
+    data = request.json
+    user_id = data.get('user_id')
+    fcm_token = data.get('fcm_token')
+    device_type = data.get('device_type')
+
+    # Save to your database (e.g. Firebase Firestore, MongoDB, PostgreSQL)
+    # Example pseudo-code
+    db.users.update_one(
+        {'user_id': user_id},
+        {'$set': {'fcm_token': fcm_token, 'device_type': device_type}},
+        upsert=True
+    )
+
+    print(f"Saved FCM token for user {user_id}: {fcm_token}")
+    return jsonify({"status": "success"}), 200
 
 # =========================================
 
