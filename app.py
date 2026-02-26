@@ -48,10 +48,16 @@ storage_client = storage.Client(credentials=credentials)
 
 # Initialize Firebase Admin ONCE at startup
 service_account_json = os.getenv("FIREBASE_SERVICE_ACCOUNT")
+service_account_info = json.loads(service_account_json)
 
-firebase_cred = firebase_credentials.Certificate(
-    json.loads(service_account_json)
-)
+# 🔥 Fix newline formatting
+service_account_info["private_key"] = service_account_info["private_key"].replace("\\n", "\n")
+
+firebase_cred = firebase_credentials.Certificate(service_account_info)
+
+# firebase_cred = firebase_credentials.Certificate(
+#     json.loads(service_account_json)
+# )
 
 firebase_admin.initialize_app(firebase_cred)
 db = firebase_admin.firestore.client()  # or your preferred database client
