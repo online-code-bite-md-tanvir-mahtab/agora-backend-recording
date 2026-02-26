@@ -13,7 +13,7 @@ from twilio.twiml.voice_response import VoiceResponse, Dial, Say
 from twilio.rest import Client
 
 import firebase_admin
-from firebase_admin import credentials as firebase_credentials, messaging
+from firebase_admin import credentials as firebase_credentials, messaging, firestore
 
 
 # ================= CONFIG =================
@@ -60,7 +60,7 @@ firebase_cred = firebase_credentials.Certificate(service_account_info)
 # )
 
 firebase_admin.initialize_app(firebase_cred)
-db = firebase_admin.firestore.client()  # or your preferred database client
+db = firestore.client()  # or your preferred database client
 
 # =========================================
 
