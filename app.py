@@ -286,28 +286,21 @@ client = Client(account_sid, auth_token)
 
 @app.route('/token', methods=['POST'])
 def generate_token():
-    print(f"[{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] /token endpoint called")
-
     try:
-        data = request.get_json(silent=True)
-        if not data:
-            print("No JSON body received")
-            return jsonify({"success": False, "error": "No JSON body"}), 400
-
+        print("Received token generation request with data:", request.get_json())
+        data = request.get_json()
         channel_name = data.get('channel', 'test_channel')
-        uid = data.get('uid', 0)
-        role = data.get('role', RtcTokenBuilder.Role_Subscriber)  # 1 = Subscriber, 2 = Publisher
+        uid = data.get('uid', 0)  # 0 = bot/host, or pass real user ID
+        role = data.get('role', RtcTokenBuilder.Role_Subscriber)  # or Role_Publisher
+        print(f"Generating token for channel: {channel_name}, uid: {uid}, role: {role}")
 
-        print(f"Request params → channel: {channel_name}, uid: {uid}, role: {role}")
-
-        # Token validity: 24 hours (86400 seconds)
+        # Token expiration (recommended: 24 hours = 86400 seconds)
         expiration_in_seconds = 86400
-        current_timestamp = int(datetime.datetime.now().time())
+        current_timestamp = int(datetime.time.time())
         privilege_expired_ts = current_timestamp + expiration_in_seconds
+        print(f"Current timestamp: {current_timestamp}, token will expire at: {privilege_expired_ts}")
 
-        print(f"Generating token with expiration: {privilege_expired_ts} ({expiration_in_seconds}s)")
-
-        # Generate the token
+        # Generate token
         token = RtcTokenBuilder.build_token_with_uid(
             APP_ID,
             APP_CERTIFICATE,
@@ -316,22 +309,17 @@ def generate_token():
             role,
             privilege_expired_ts
         )
-
-        print(f"Token generated successfully: {token[:20]}... (truncated)")
+        print("Generated Agora token:", token)
 
         return jsonify({
             "success": True,
             "token": token,
             "channel": channel_name,
             "uid": uid,
-            "expires_in": expiration_in_seconds,
-            "generated_at": datetime.now().isoformat()
+            "expires_in": expiration_in_seconds
         })
 
     except Exception as e:
-        print(f"Token generation error: {str(e)}")
-        import traceback
-        traceback.print_exc()  # prints full stack trace in Vercel logs
         return jsonify({
             "success": False,
             "error": str(e)
