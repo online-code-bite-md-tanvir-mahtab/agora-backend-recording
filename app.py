@@ -286,18 +286,28 @@ client = Client(account_sid, auth_token)
 
 @app.route('/token', methods=['POST'])
 def generate_token():
-    try:
-        data = request.get_json()
-        channel_name = data.get('channel', 'test_channel')
-        uid = data.get('uid', 0)  # 0 = bot/host, or pass real user ID
-        role = data.get('role', RtcTokenBuilder.Role_Subscriber)  # or Role_Publisher
+    print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] /token endpoint called")
 
-        # Token expiration (recommended: 24 hours = 86400 seconds)
+    try:
+        data = request.get_json(silent=True)
+        if not data:
+            print("No JSON body received")
+            return jsonify({"success": False, "error": "No JSON body"}), 400
+
+        channel_name = data.get('channel', 'test_channel')
+        uid = data.get('uid', 0)
+        role = data.get('role', RtcTokenBuilder.Role_Subscriber)  # 1 = Subscriber, 2 = Publisher
+
+        print(f"Request params → channel: {channel_name}, uid: {uid}, role: {role}")
+
+        # Token validity: 24 hours (86400 seconds)
         expiration_in_seconds = 86400
-        current_timestamp = int(datetime.time.time())
+        current_timestamp = int(time.time())
         privilege_expired_ts = current_timestamp + expiration_in_seconds
 
-        # Generate token
+        print(f"Generating token with expiration: {privilege_expired_ts} ({expiration_in_seconds}s)")
+
+        # Generate the token
         token = RtcTokenBuilder.build_token_with_uid(
             APP_ID,
             APP_CERTIFICATE,
@@ -306,17 +316,22 @@ def generate_token():
             role,
             privilege_expired_ts
         )
-        print("Generated Agora token:", token)
+
+        print(f"Token generated successfully: {token[:20]}... (truncated)")
 
         return jsonify({
             "success": True,
             "token": token,
             "channel": channel_name,
             "uid": uid,
-            "expires_in": expiration_in_seconds
+            "expires_in": expiration_in_seconds,
+            "generated_at": datetime.now().isoformat()
         })
 
     except Exception as e:
+        print(f"Token generation error: {str(e)}")
+        import traceback
+        traceback.print_exc()  # prints full stack trace in Vercel logs
         return jsonify({
             "success": False,
             "error": str(e)
