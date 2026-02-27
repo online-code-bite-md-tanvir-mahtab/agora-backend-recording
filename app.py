@@ -11,6 +11,7 @@ from twilio.jwt.access_token import AccessToken
 from twilio.jwt.access_token.grants import VoiceGrant
 from twilio.twiml.voice_response import VoiceResponse, Dial, Say
 from twilio.rest import Client
+from agora_token_builder import RtcTokenBuilder
 
 import firebase_admin
 from firebase_admin import credentials as firebase_credentials, messaging, firestore
@@ -25,6 +26,8 @@ CUSTOMER_ID = os.environ.get("AGORA_CUSTOMER_ID")
 CUSTOMER_SECRET = os.environ.get("AGORA_CUSTOMER_SECRET")
 AGORA_ACCESS_KEY = os.environ.get("AGORA_GCS_ACCESS_KEY")
 AGORA_SECRET_KEY = os.environ.get("AGORA_GCS_SECRET_KEY")
+
+APP_CERTIFICATE = os.environ.get("AGORA_APP_CERTIFICATE")
 BUCKET_NAME = os.environ.get("AGORA_BUCKET_NAME")
 SIG_SIP_URI = os.environ.get("SIGNALWIRE_SIP_URI")
 SIG_USERNAME = os.environ.get("SIGNALWIRE_USERNAME")
@@ -282,26 +285,41 @@ def make_call():
 client = Client(account_sid, auth_token)
 
 @app.route('/token', methods=['POST'])
-def get_access_token():
-    identity = request.json.get('identity')  # e.g. "user_123" — must match what you register in Flutter
-    if not identity:
-        return jsonify({"error": "identity required"}), 400
+def generate_token():
+    try:
+        data = request.get_json()
+        channel_name = data.get('channel', 'test_channel')
+        uid = data.get('uid', 0)  # 0 = bot/host, or pass real user ID
+        role = data.get('role', RtcTokenBuilder.Role_Subscriber)  # or Role_Publisher
 
-    token = AccessToken(
-        account_sid,
-        api_key_sid,
-        api_key_secret,
-        identity=identity
-    )
+        # Token expiration (recommended: 24 hours = 86400 seconds)
+        expiration_in_seconds = 86400
+        current_timestamp = int(datetime.time.time())
+        privilege_expired_ts = current_timestamp + expiration_in_seconds
 
-    voice_grant = VoiceGrant(
-        outgoing_application_sid=twiml_app_sid,
-        incoming_allow=True
-        # push_credential_sid=...  ← add later if you want push for incoming
-    )
-    token.add_grant(voice_grant)
+        # Generate token
+        token = RtcTokenBuilder.build_token_with_uid(
+            APP_ID,
+            APP_CERTIFICATE,
+            channel_name,
+            uid,
+            role,
+            privilege_expired_ts
+        )
 
-    return jsonify({"token": token.to_jwt().decode()})
+        return jsonify({
+            "success": True,
+            "token": token,
+            "channel": channel_name,
+            "uid": uid,
+            "expires_in": expiration_in_seconds
+        })
+
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
 
 from twilio.twiml.voice_response import VoiceResponse, Dial, Say
 # ... other imports ...
