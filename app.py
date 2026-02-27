@@ -289,9 +289,9 @@ def generate_token():
     try:
         print("Received token generation request with data:", request.get_json())
         data = request.get_json()
-        channel_name = data.get('channel', 'test_channel')
-        uid = data.get('uid', 0)  # 0 = bot/host, or pass real user ID
-        role = data.get('role', RtcTokenBuilder.Role_Subscriber)  # or Role_Publisher
+        channel_name = data["channel"]
+        uid = data["uid"]  # 0 = bot/host, or pass real user ID
+        role = data["role"] # or Role_Publisher
         print(f"Generating token for channel: {channel_name}, uid: {uid}, role: {role}")
 
         # Token expiration (recommended: 24 hours = 86400 seconds)
@@ -320,6 +320,7 @@ def generate_token():
         })
 
     except Exception as e:
+        print("Error generating token:", e)
         return jsonify({
             "success": False,
             "error": str(e)
