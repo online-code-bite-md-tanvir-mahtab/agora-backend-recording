@@ -286,7 +286,7 @@ client = Client(account_sid, auth_token)
 
 @app.route('/token', methods=['POST'])
 def generate_token():
-    print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] /token endpoint called")
+    print(f"[{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] /token endpoint called")
 
     try:
         data = request.get_json(silent=True)
