@@ -306,6 +306,7 @@ def generate_token():
             role,
             privilege_expired_ts
         )
+        print("Generated Agora token:", token)
 
         return jsonify({
             "success": True,
