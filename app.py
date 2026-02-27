@@ -302,7 +302,7 @@ def generate_token():
 
         # Token validity: 24 hours (86400 seconds)
         expiration_in_seconds = 86400
-        current_timestamp = int(time.time())
+        current_timestamp = int(datetime.datetime.now().time())
         privilege_expired_ts = current_timestamp + expiration_in_seconds
 
         print(f"Generating token with expiration: {privilege_expired_ts} ({expiration_in_seconds}s)")
