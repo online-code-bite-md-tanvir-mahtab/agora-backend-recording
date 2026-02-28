@@ -442,6 +442,41 @@ def generate_inbound():
     else:
         return jsonify({"error": resp.text}), 500
     
+    
+
+
+@app.route('/get-agora-token', methods=['POST'])
+def get_agora_token():
+    try:
+        data = request.get_json()
+        user_id = data.get('userId')
+        phone = data.get('phoneNumber')
+        channel = data.get('channel')
+
+        if not user_id and not phone:
+            return jsonify({"success": False, "error": "userId or phoneNumber required"}), 400
+
+        # Prefer userId > phone > channel
+        doc_id = user_id or phone or f"{channel}_0"
+        doc_ref = db.collection('agora_tokens').document(doc_id)
+        doc = doc_ref.get()
+
+        if doc.exists:
+            token_data = doc.to_dict()
+            return jsonify({
+                "success": True,
+                "token": token_data.get('rtcToken'),
+                "channel": token_data.get('channel'),
+                "uid": token_data.get('uid'),
+                "expiresAt": token_data.get('expiresAt')
+            })
+        else:
+            return jsonify({"success": False, "error": "No token found"}), 404
+
+    except Exception as e:
+        print(f"Retrieve error: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
+    
 @app.route("/inbound", methods=["POST"])
 def inbound_call():
     from_number = request.values.get("From")
