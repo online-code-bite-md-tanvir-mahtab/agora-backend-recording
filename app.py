@@ -12,6 +12,7 @@ from twilio.jwt.access_token.grants import VoiceGrant
 from twilio.twiml.voice_response import VoiceResponse, Dial, Say
 from twilio.rest import Client
 from agora_token_builder import RtcTokenBuilder
+from google.cloud.firestore_v1 import FieldFilter
 
 import firebase_admin
 from firebase_admin import credentials as firebase_credentials, messaging, firestore
@@ -486,7 +487,7 @@ def inbound_call():
     
     # Fetch FCM token once
     users_ref = db.collection('users')
-    query = users_ref.where('phoneNumber', '==', from_number).limit(1)
+    query = users_ref.where(filter=FieldFilter('phoneNumber', '==', from_number)).limit(1)
     docs = query.get()
 
     # for fcm push notifications to Flutter app, you can send the call_sid or other identifiers here so your app can correlate and display incoming call UI
