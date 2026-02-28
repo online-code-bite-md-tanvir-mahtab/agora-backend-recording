@@ -566,24 +566,6 @@ def call_lookup():
     })
 
 
-@app.route('/save-fcm-token', methods=['POST'])
-def save_fcm_token():
-    data = request.json
-    user_id = data.get('user_id')
-    fcm_token = data.get('fcm_token')
-    device_type = data.get('device_type')
-
-    # Save to your database (e.g. Firebase Firestore, MongoDB, PostgreSQL)
-    # Example pseudo-code
-    db.users.update_one(
-        {'user_id': user_id},
-        {'$set': {'fcm_token': fcm_token, 'device_type': device_type}},
-        upsert=True
-    )
-
-    print(f"Saved FCM token for user {user_id}: {fcm_token}")
-    return jsonify({"status": "success"}), 200
-
 # =========================================
 
 # if __name__ == "__main__":
