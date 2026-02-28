@@ -453,7 +453,8 @@ def inbound_call():
             APP_CERTIFICATE,
             "test_channel",
             "0",
-            1
+            1,
+            int(datetime.datetime.now().timestamp()) + 86400
         )
     # New collection name: 'agora_tokens'
     # Document ID: user_id or phone or auto-generated
