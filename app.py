@@ -301,7 +301,8 @@ def generate_token():
         print(f"Current timestamp: {current_timestamp}, token will expire at: {privilege_expired_ts}")
 
         # Generate token
-        token = RtcTokenBuilder.build_token_with_uid(
+        # Error generating token: type object 'RtcTokenBuilder' has no attribute 'build_token_with_uid'
+        token = RtcTokenBuilder.buildTokenWithUid(
             APP_ID,
             APP_CERTIFICATE,
             channel_name,
