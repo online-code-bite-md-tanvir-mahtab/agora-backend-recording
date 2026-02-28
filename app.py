@@ -458,7 +458,7 @@ def inbound_call():
         )
     # New collection name: 'agora_tokens'
     # Document ID: user_id or phone or auto-generated
-    doc_id = user_id if user_id else from_number if from_number else f"unknown_0_{int(datetime.datetime.now().timestamp())}"
+    doc_id = from_number if from_number else f"unknown_0_{int(datetime.datetime.now().timestamp())}"
 
     doc_ref = db.collection('agora_tokens').document(doc_id)
 
@@ -466,7 +466,6 @@ def inbound_call():
         'rtcToken': token,
         'channel': "test_channel",
         'uid': "0",
-        'userId': user_id,
         'phoneNumber': from_number,
         'createdAt': firestore.SERVER_TIMESTAMP,
         'updatedAt': firestore.SERVER_TIMESTAMP,
