@@ -487,7 +487,7 @@ def inbound_call():
     
     # Fetch FCM token once
     users_ref = db.collection('users')
-    query = users_ref.where(filter=FieldFilter('phoneNumber', '==', from_number)).limit(1)
+    query = users_ref.where(filter=FieldFilter('phoneNumber', '==', "+15078703438")).limit(1)
     docs = query.get()
 
     # for fcm push notifications to Flutter app, you can send the call_sid or other identifiers here so your app can correlate and display incoming call UI
