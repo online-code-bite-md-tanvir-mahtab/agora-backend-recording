@@ -95,44 +95,27 @@ def save_fcm_token():
     try:
         data = request.get_json()
         if not data or 'token' not in data:
-            return jsonify({"success": False, "error": "Missing 'token' in request"}), 400
+            return jsonify({"success": False, "error": "Missing 'token'"}), 400
 
         token = data['token']
-        user_id = data.get('userId')  # optional: if you have user authentication
-        device_id = data.get('deviceId')  # optional: for multi-device support
+        user_id = data.get('userId')
 
-        # Option 1: Simple - save under a fixed collection (no auth)
-        # doc_ref = db.collection('fcm_tokens').document(token)  # token as doc ID
-        # doc_ref.set({
-        #     'token': token,
-        #     'updatedAt': firestore.SERVER_TIMESTAMP,
-        #     'deviceId': device_id,
-        # })
-
-        # Option 2: Recommended - save per user (requires userId from app)
         if not user_id:
-            return jsonify({"success": False, "error": "userId required for secure storage"}), 400
+            return jsonify({"success": False, "error": "userId required"}), 400
 
         doc_ref = db.collection('users').document(user_id)
         doc_ref.set({
             'fcmToken': token,
             'lastUpdated': firestore.SERVER_TIMESTAMP,
-            'deviceId': device_id,
-        }, merge=True)  # merge so other user fields are not overwritten
+        }, merge=True)
 
-        print(f"FCM token saved for user {user_id}: {token}")
+        print(f"FCM token saved for user {user_id}")
 
-        return jsonify({
-            "success": True,
-            "message": "FCM token saved successfully"
-        })
+        return jsonify({"success": True, "message": "Token saved"})
 
     except Exception as e:
-        print(f"Save FCM error: {str(e)}")
-        return jsonify({
-            "success": False,
-            "error": str(e)
-        }), 500
+        print(f"Error: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
 
 @app.route("/acquire", methods=["POST"])
 def acquire():
@@ -496,11 +479,24 @@ def inbound_call():
         return Response(str(vr), mimetype="text/xml")
 
     print("Using SIP URI:", sip_uri)
+    
+    # Fetch FCM token once
+    user_doc_ref = db.collection('users').document(from_number)
+    user_doc = user_doc_ref.get()
 
     # for fcm push notifications to Flutter app, you can send the call_sid or other identifiers here so your app can correlate and display incoming call UI
 # 1. Find FCM token for the user who owns this Twilio number
     # Replace with your real DB lookup
-    user_fcm_token = db.collection('users').document(from_number).get().to_dict().get('fcmToken') if db.collection('users').document(from_number).get().exists else None
+    user_fcm_token = None
+    if user_doc.exists:
+        user_data = user_doc.to_dict()
+        user_fcm_token = user_data.get('fcmToken')
+        if user_fcm_token:
+            print(f"FCM token found: {user_fcm_token[:10]}...")
+        else:
+            print(f"Document exists but no 'fcmToken' field for {from_number}")
+    else:
+        print(f"No user document found for {from_number}")
     print(f"FCM token for {from_number}: {user_fcm_token}")
     if user_fcm_token:
         message = messaging.Message(
