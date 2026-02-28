@@ -448,6 +448,14 @@ def inbound_call():
     call_sid = request.values.get("CallSid")
 
     print(f"Incoming call from {from_number} - SID: {call_sid}")
+    token  = RtcTokenBuilder.buildTokenWithUid(
+            APP_ID,
+            APP_CERTIFICATE,
+            "test_channel",
+            "0",
+            1
+        )
+    
 
     # 1. Generate the SIP URI for this session
     resp = requests.post(
@@ -459,7 +467,7 @@ def inbound_call():
         json={
             "action": "inboundsip",
             "appid": APP_ID,
-            "token": TOKEN,
+            "token": token,
             "uid": "0",
             "channel": "test_channel",  # or dynamic
             "region": "AREA_CODE_NA"
