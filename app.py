@@ -99,22 +99,26 @@ def save_fcm_token():
 
         token = data['token']
         user_id = data.get('userId')
+        phone_number = data.get('phoneNumber')  # optional
 
         if not user_id:
             return jsonify({"success": False, "error": "userId required"}), 400
 
+        # Save in Firestore
         doc_ref = db.collection('users').document(user_id)
         doc_ref.set({
             'fcmToken': token,
+            'phoneNumber': phone_number,
             'lastUpdated': firestore.SERVER_TIMESTAMP,
+            'deviceInfo': data.get('deviceInfo'),
         }, merge=True)
 
-        print(f"FCM token saved for user {user_id}")
+        print(f"FCM token saved for user {user_id}: {token[:10]}...")
 
         return jsonify({"success": True, "message": "Token saved"})
 
     except Exception as e:
-        print(f"Error: {e}")
+        print(f"Save FCM error: {str(e)}")
         return jsonify({"success": False, "error": str(e)}), 500
 
 @app.route("/acquire", methods=["POST"])
