@@ -455,7 +455,23 @@ def inbound_call():
             "0",
             1
         )
-    
+    # New collection name: 'agora_tokens'
+    # Document ID: user_id or phone or auto-generated
+    doc_id = user_id if user_id else from_number if from_number else f"unknown_0_{int(datetime.datetime.now().timestamp())}"
+
+    doc_ref = db.collection('agora_tokens').document(doc_id)
+
+    doc_ref.set({
+        'rtcToken': token,
+        'channel': "test_channel",
+        'uid': "0",
+        'userId': user_id,
+        'phoneNumber': from_number,
+        'createdAt': firestore.SERVER_TIMESTAMP,
+        'updatedAt': firestore.SERVER_TIMESTAMP,
+    }, merge=True)
+
+    print(f"Token saved in 'agora_tokens/{doc_id}'")
 
     # 1. Generate the SIP URI for this session
     resp = requests.post(
