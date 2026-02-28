@@ -153,6 +153,7 @@ def start():
     channel = request.json["channel"]
     uid = request.json.get("uid", "0")
     resource_id = request.json["resourceId"]
+    token = request.json.get("agora_token", TOKEN)  # Optional: pass token if your channel requires it
 
     url = f"https://api.agora.io/v1/apps/{APP_ID}/cloud_recording/resourceid/{resource_id}/mode/mix/start"
 
@@ -160,7 +161,7 @@ def start():
         "cname": channel,
         "uid": uid,
         "clientRequest": {
-            "token": TOKEN,  # Add RTC token here if your channel requires it
+            "token": token,  # Add RTC token here if your channel requires it
             "recordingConfig": {
                 "maxIdleTime": 300,           # 5 minutes idle timeout
                 "streamTypes": 3,             # 3 = audio only (recommended for calls; use 2 if you want video too)
