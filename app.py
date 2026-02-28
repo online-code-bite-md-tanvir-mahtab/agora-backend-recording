@@ -485,23 +485,28 @@ def inbound_call():
     print("Using SIP URI:", sip_uri)
     
     # Fetch FCM token once
-    user_doc_ref = db.collection('users').document(from_number)
-    user_doc = user_doc_ref.get()
+    users_ref = db.collection('users')
+    query = users_ref.where('phoneNumber', '==', from_number).limit(1)
+    docs = query.get()
 
     # for fcm push notifications to Flutter app, you can send the call_sid or other identifiers here so your app can correlate and display incoming call UI
 # 1. Find FCM token for the user who owns this Twilio number
     # Replace with your real DB lookup
     user_fcm_token = None
-    if user_doc.exists:
+    user_id = None
+
+    if docs:
+        user_doc = docs[0]
         user_data = user_doc.to_dict()
         user_fcm_token = user_data.get('fcmToken')
+        user_id = user_doc.id  # the document ID (user123)
+
         if user_fcm_token:
-            print(f"FCM token found: {user_fcm_token[:10]}...")
+            print(f"FCM token found for user {user_id} (phone {from_number}): {user_fcm_token[:10]}...")
         else:
-            print(f"Document exists but no 'fcmToken' field for {from_number}")
+            print(f"User {user_id} has no fcmToken field")
     else:
-        print(f"No user document found for {from_number}")
-    print(f"FCM token for {from_number}: {user_fcm_token}")
+        print(f"No user found with phoneNumber {from_number}")
     if user_fcm_token:
         message = messaging.Message(
             notification=messaging.Notification(
