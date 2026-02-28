@@ -90,6 +90,49 @@ def agora_auth():
 def home():
     return "Agora Cloud Recording API is running!"
 
+@app.route('/save-fcm-token', methods=['POST'])
+def save_fcm_token():
+    try:
+        data = request.get_json()
+        if not data or 'token' not in data:
+            return jsonify({"success": False, "error": "Missing 'token' in request"}), 400
+
+        token = data['token']
+        user_id = data.get('userId')  # optional: if you have user authentication
+        device_id = data.get('deviceId')  # optional: for multi-device support
+
+        # Option 1: Simple - save under a fixed collection (no auth)
+        # doc_ref = db.collection('fcm_tokens').document(token)  # token as doc ID
+        # doc_ref.set({
+        #     'token': token,
+        #     'updatedAt': firestore.SERVER_TIMESTAMP,
+        #     'deviceId': device_id,
+        # })
+
+        # Option 2: Recommended - save per user (requires userId from app)
+        if not user_id:
+            return jsonify({"success": False, "error": "userId required for secure storage"}), 400
+
+        doc_ref = db.collection('users').document(user_id)
+        doc_ref.set({
+            'fcmToken': token,
+            'lastUpdated': firestore.SERVER_TIMESTAMP,
+            'deviceId': device_id,
+        }, merge=True)  # merge so other user fields are not overwritten
+
+        print(f"FCM token saved for user {user_id}: {token}")
+
+        return jsonify({
+            "success": True,
+            "message": "FCM token saved successfully"
+        })
+
+    except Exception as e:
+        print(f"Save FCM error: {str(e)}")
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
 
 @app.route("/acquire", methods=["POST"])
 def acquire():
@@ -457,8 +500,8 @@ def inbound_call():
     # for fcm push notifications to Flutter app, you can send the call_sid or other identifiers here so your app can correlate and display incoming call UI
 # 1. Find FCM token for the user who owns this Twilio number
     # Replace with your real DB lookup
-    user_fcm_token = "cc0383ioQEC6uYfbmxzh1w:APA91bF5rGvIzJJAEE6sWSitadcFNDNZ85XQe_xW4eu4RANqmGANoX_pIl-pWPwaDoJMCXM5hZ1e1qigzjWnw_2txOy1ANtW3f8MIlkKHSa-F1ceL5Ohl-k" # ← get from your database
-
+    user_fcm_token = db.collection('users').document(from_number).get().to_dict().get('fcmToken') if db.collection('users').document(from_number).get().exists else None
+    print(f"FCM token for {from_number}: {user_fcm_token}")
     if user_fcm_token:
         message = messaging.Message(
             notification=messaging.Notification(
