@@ -505,34 +505,21 @@ def call_lookup():
 
 @app.route('/save-fcm-token', methods=['POST'])
 def save_fcm_token():
-    try:
-        data = request.get_json()
-        if not data:
-            return jsonify({"success": False, "error": "No JSON data"}), 400
+    data = request.json
+    user_id = data.get('user_id')
+    fcm_token = data.get('fcm_token')
+    device_type = data.get('device_type')
 
-        user_id = data.get('user_id')
-        fcm_token = data.get('fcm_token')
-        device_type = data.get('device_type')
+    # Save to your database (e.g. Firebase Firestore, MongoDB, PostgreSQL)
+    # Example pseudo-code
+    db.users.update_one(
+        {'user_id': user_id},
+        {'$set': {'fcm_token': fcm_token, 'device_type': device_type}},
+        upsert=True
+    )
 
-        if not user_id or not fcm_token:
-            pass
-
-        # Save in Firestore - collection 'users', document = user_id
-        doc_ref = db.collection('users').document(user_id)
-
-        doc_ref.set({
-            'fcm_token': fcm_token,
-            'device_type': device_type or 'unknown',
-            'last_updated': firestore.SERVER_TIMESTAMP,
-        }, merge=True)  # merge = update only these fields, keep others
-
-        print(f"Saved FCM token for user {user_id}: {fcm_token[:10]}...")
-
-        return jsonify({"status": "success", "message": "Token saved"}), 200
-
-    except Exception as e:
-        print(f"Save FCM error: {str(e)}")
-        return jsonify({"success": False, "error": str(e)}), 500
+    print(f"Saved FCM token for user {user_id}: {fcm_token}")
+    return jsonify({"status": "success"}), 200
 
 # =========================================
 
