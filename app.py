@@ -11,8 +11,6 @@ from twilio.jwt.access_token import AccessToken
 from twilio.jwt.access_token.grants import VoiceGrant
 from twilio.twiml.voice_response import VoiceResponse, Dial, Say
 from twilio.rest import Client
-from agora_token_builder import RtcTokenBuilder
-from google.cloud.firestore_v1 import FieldFilter
 
 import firebase_admin
 from firebase_admin import credentials as firebase_credentials, messaging, firestore
@@ -27,8 +25,6 @@ CUSTOMER_ID = os.environ.get("AGORA_CUSTOMER_ID")
 CUSTOMER_SECRET = os.environ.get("AGORA_CUSTOMER_SECRET")
 AGORA_ACCESS_KEY = os.environ.get("AGORA_GCS_ACCESS_KEY")
 AGORA_SECRET_KEY = os.environ.get("AGORA_GCS_SECRET_KEY")
-
-APP_CERTIFICATE = os.environ.get("AGORA_APP_CERTIFICATE")
 BUCKET_NAME = os.environ.get("AGORA_BUCKET_NAME")
 SIG_SIP_URI = os.environ.get("SIGNALWIRE_SIP_URI")
 SIG_USERNAME = os.environ.get("SIGNALWIRE_USERNAME")
@@ -91,36 +87,6 @@ def agora_auth():
 def home():
     return "Agora Cloud Recording API is running!"
 
-@app.route('/save-fcm-token', methods=['POST'])
-def save_fcm_token():
-    try:
-        data = request.get_json()
-        if not data or 'token' not in data:
-            return jsonify({"success": False, "error": "Missing 'token'"}), 400
-
-        token = data['token']
-        user_id = data.get('userId')
-        phone_number = data.get('phoneNumber')  # optional
-
-        if not user_id:
-            return jsonify({"success": False, "error": "userId required"}), 400
-
-        # Save in Firestore
-        doc_ref = db.collection('users').document(user_id)
-        doc_ref.set({
-            'fcmToken': token,
-            'phoneNumber': phone_number,
-            'lastUpdated': firestore.SERVER_TIMESTAMP,
-            'deviceInfo': data.get('deviceInfo'),
-        }, merge=True)
-
-        print(f"FCM token saved for user {user_id}: {token[:10]}...")
-
-        return jsonify({"success": True, "message": "Token saved"})
-
-    except Exception as e:
-        print(f"Save FCM error: {str(e)}")
-        return jsonify({"success": False, "error": str(e)}), 500
 
 @app.route("/acquire", methods=["POST"])
 def acquire():
@@ -153,7 +119,6 @@ def start():
     channel = request.json["channel"]
     uid = request.json.get("uid", "0")
     resource_id = request.json["resourceId"]
-    token = request.json.get("agora_token", TOKEN)  # Optional: pass token if your channel requires it
 
     url = f"https://api.agora.io/v1/apps/{APP_ID}/cloud_recording/resourceid/{resource_id}/mode/mix/start"
 
@@ -161,7 +126,7 @@ def start():
         "cname": channel,
         "uid": uid,
         "clientRequest": {
-            "token": token,  # Add RTC token here if your channel requires it
+            "token": TOKEN,  # Add RTC token here if your channel requires it
             "recordingConfig": {
                 "maxIdleTime": 300,           # 5 minutes idle timeout
                 "streamTypes": 3,             # 3 = audio only (recommended for calls; use 2 if you want video too)
@@ -317,47 +282,26 @@ def make_call():
 client = Client(account_sid, auth_token)
 
 @app.route('/token', methods=['POST'])
-def generate_token():
-    try:
-        print("Received token generation request with data:", request.get_json())
-        data = request.get_json()
-        channel_name = data["channel"]
-        uid = data["uid"]  # 0 = bot/host, or pass real user ID
-        role = data["role"] # or Role_Publisher
-        print(f"Generating token for channel: {channel_name}, uid: {uid}, role: {role}")
+def get_access_token():
+    identity = request.json.get('identity')  # e.g. "user_123" — must match what you register in Flutter
+    if not identity:
+        return jsonify({"error": "identity required"}), 400
 
-        # Token expiration (recommended: 24 hours = 86400 seconds)
-        expiration_in_seconds = 86400
-        current_timestamp = int(datetime.datetime.now().timestamp())
-        privilege_expired_ts = current_timestamp + expiration_in_seconds
-        print(f"Current timestamp: {current_timestamp}, token will expire at: {privilege_expired_ts}")
+    token = AccessToken(
+        account_sid,
+        api_key_sid,
+        api_key_secret,
+        identity=identity
+    )
 
-        # Generate token
-        # Error generating token: type object 'RtcTokenBuilder' has no attribute 'build_token_with_uid'
-        token = RtcTokenBuilder.buildTokenWithUid(
-            APP_ID,
-            APP_CERTIFICATE,
-            channel_name,
-            uid,
-            role,
-            privilege_expired_ts
-        )
-        print("Generated Agora token:", token)
+    voice_grant = VoiceGrant(
+        outgoing_application_sid=twiml_app_sid,
+        incoming_allow=True
+        # push_credential_sid=...  ← add later if you want push for incoming
+    )
+    token.add_grant(voice_grant)
 
-        return jsonify({
-            "success": True,
-            "token": token,
-            "channel": channel_name,
-            "uid": uid,
-            "expires_in": expiration_in_seconds
-        })
-
-    except Exception as e:
-        print("Error generating token:", e)
-        return jsonify({
-            "success": False,
-            "error": str(e)
-        }), 500
+    return jsonify({"token": token.to_jwt().decode()})
 
 from twilio.twiml.voice_response import VoiceResponse, Dial, Say
 # ... other imports ...
@@ -442,75 +386,12 @@ def generate_inbound():
     else:
         return jsonify({"error": resp.text}), 500
     
-    
-
-
-@app.route('/get-agora-token', methods=['POST'])
-def get_agora_token():
-    try:
-        data = request.get_json()
-        user_id = data.get('userId')
-        phone = data.get('phoneNumber')
-        channel = data.get('channel')
-
-        print(f"Token retrieval request for userId: {user_id}, phoneNumber: {phone}, channel: {channel}")
-
-        if not user_id and not phone:
-            return jsonify({"success": False, "error": "userId or phoneNumber required"}), 400
-
-        # Prefer userId > phone > channel
-        doc_id = user_id or phone or f"{channel}_0"
-        doc_ref = db.collection('agora_tokens').document(doc_id)
-        doc = doc_ref.get()
-
-        if doc.exists:
-            token_data = doc.to_dict()
-            print(f"Token data found for ID {doc_id}: {token_data}")
-            return jsonify({
-                "success": True,
-                "token": token_data.get('rtcToken'),
-                "channel": token_data.get('channel'),
-                "uid": token_data.get('uid'),
-                "expiresAt": token_data.get('expiresAt')
-            })
-        else:
-            print(f"No token document found for ID: {doc_id}")
-            return jsonify({"success": False, "error": "No token found"}), 404
-
-    except Exception as e:
-        print(f"Retrieve error: {e}")
-        return jsonify({"success": False, "error": str(e)}), 500
-    
 @app.route("/inbound", methods=["POST"])
 def inbound_call():
     from_number = request.values.get("From")
     call_sid = request.values.get("CallSid")
 
     print(f"Incoming call from {from_number} - SID: {call_sid}")
-    token  = RtcTokenBuilder.buildTokenWithUid(
-            APP_ID,
-            APP_CERTIFICATE,
-            "test_channel",
-            "0",
-            1,
-            int(datetime.datetime.now().timestamp()) + 86400
-        )
-    # New collection name: 'agora_tokens'
-    # Document ID: user_id or phone or auto-generated
-    doc_id = from_number if from_number else f"unknown_0_{int(datetime.datetime.now().timestamp())}"
-
-    doc_ref = db.collection('agora_tokens').document(doc_id)
-
-    doc_ref.set({
-        'rtcToken': token,
-        'channel': "test_channel",
-        'uid': "0",
-        'phoneNumber': from_number,
-        'createdAt': firestore.SERVER_TIMESTAMP,
-        'updatedAt': firestore.SERVER_TIMESTAMP,
-    }, merge=True)
-
-    print(f"Token saved in 'agora_tokens/{doc_id}'")
 
     # 1. Generate the SIP URI for this session
     resp = requests.post(
@@ -522,7 +403,7 @@ def inbound_call():
         json={
             "action": "inboundsip",
             "appid": APP_ID,
-            "token": token,
+            "token": TOKEN,
             "uid": "0",
             "channel": "test_channel",  # or dynamic
             "region": "AREA_CODE_NA"
@@ -548,30 +429,12 @@ def inbound_call():
         return Response(str(vr), mimetype="text/xml")
 
     print("Using SIP URI:", sip_uri)
-    
-    # Fetch FCM token once
-    users_ref = db.collection('users')
-    query = users_ref.where(filter=FieldFilter('phoneNumber', '==', "+15078703438")).limit(1)
-    docs = query.get()
 
     # for fcm push notifications to Flutter app, you can send the call_sid or other identifiers here so your app can correlate and display incoming call UI
 # 1. Find FCM token for the user who owns this Twilio number
     # Replace with your real DB lookup
-    user_fcm_token = None
-    user_id = None
+    user_fcm_token = db.users.find_one({'twilio_number': "+15078703438"})['fcm_token']  # ← get from your database
 
-    if docs:
-        user_doc = docs[0]
-        user_data = user_doc.to_dict()
-        user_fcm_token = user_data.get('fcmToken')
-        user_id = user_doc.id  # the document ID (user123)
-
-        if user_fcm_token:
-            print(f"FCM token found for user {user_id} (phone {from_number}): {user_fcm_token[:10]}...")
-        else:
-            print(f"User {user_id} has no fcmToken field")
-    else:
-        print(f"No user found with phoneNumber {from_number}")
     if user_fcm_token:
         message = messaging.Message(
             notification=messaging.Notification(
@@ -639,6 +502,24 @@ def call_lookup():
         "token": TOKEN
     })
 
+
+@app.route('/save-fcm-token', methods=['POST'])
+def save_fcm_token():
+    data = request.json
+    user_id = data.get('user_id')
+    fcm_token = data.get('fcm_token')
+    device_type = data.get('device_type')
+
+    # Save to your database (e.g. Firebase Firestore, MongoDB, PostgreSQL)
+    # Example pseudo-code
+    db.users.update_one(
+        {'user_id': user_id},
+        {'$set': {'fcm_token': fcm_token, 'device_type': device_type}},
+        upsert=True
+    )
+
+    print(f"Saved FCM token for user {user_id}: {fcm_token}")
+    return jsonify({"status": "success"}), 200
 
 # =========================================
 
