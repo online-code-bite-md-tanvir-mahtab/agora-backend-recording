@@ -453,6 +453,8 @@ def get_agora_token():
         phone = data.get('phoneNumber')
         channel = data.get('channel')
 
+        print(f"Token retrieval request for userId: {user_id}, phoneNumber: {phone}, channel: {channel}")
+
         if not user_id and not phone:
             return jsonify({"success": False, "error": "userId or phoneNumber required"}), 400
 
@@ -463,6 +465,7 @@ def get_agora_token():
 
         if doc.exists:
             token_data = doc.to_dict()
+            print(f"Token data found for ID {doc_id}: {token_data}")
             return jsonify({
                 "success": True,
                 "token": token_data.get('rtcToken'),
@@ -471,6 +474,7 @@ def get_agora_token():
                 "expiresAt": token_data.get('expiresAt')
             })
         else:
+            print(f"No token document found for ID: {doc_id}")
             return jsonify({"success": False, "error": "No token found"}), 404
 
     except Exception as e:
