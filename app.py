@@ -515,7 +515,7 @@ def save_fcm_token():
         device_type = data.get('device_type')
 
         if not user_id or not fcm_token:
-            return jsonify({"success": False, "error": "user_id and fcm_token are required"}), 400
+            pass
 
         # Save in Firestore - collection 'users', document = user_id
         doc_ref = db.collection('users').document(user_id)
