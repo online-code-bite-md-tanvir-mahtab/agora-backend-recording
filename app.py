@@ -509,29 +509,35 @@ def save_fcm_token():
         if not data:
             return jsonify({"success": False, "error": "No JSON data"}), 400
 
-        user_id = data.get('user_id')
-        fcm_token = data.get('fcm_token')
-        device_type = data.get('device_type')
+        # Use the exact field names coming from Flutter
+        fcm_token = data.get('token')           # Flutter sends 'token'
+        user_id = data.get('userId')            # Flutter sends 'userId'
+        device_type = data.get('deviceInfo')    # Flutter sends 'deviceInfo'
+        phone_number = data.get('phoneNumber')  # optional
 
+        # Required fields check
         if not user_id or not fcm_token:
-            return jsonify({"success": False, "error": "user_id and fcm_token are required"}), 400
+            return jsonify({"success": False, "error": "userId and token are required"}), 400
 
-        # Correct Firestore save
+        # Save to Firestore
         doc_ref = db.collection('users').document(user_id)
 
         doc_ref.set({
             'fcm_token': fcm_token,
+            'user_id': user_id,                     # store it for clarity
+            'phone_number': phone_number,
             'device_type': device_type or 'unknown',
             'last_updated': firestore.SERVER_TIMESTAMP,
-            'updated_at': firestore.SERVER_TIMESTAMP,
-        }, merge=True)  # merge = update only these fields
+        }, merge=True)
 
         print(f"Saved FCM token for user {user_id}: {fcm_token[:10]}...")
 
-        return jsonify({"status": "success", "message": "Token saved"}), 200
+        return jsonify({"success": True, "message": "Token saved"}), 200
 
     except Exception as e:
         print(f"Save FCM error: {str(e)}")
+        import traceback
+        traceback.print_exc()  # shows full stack trace in logs
         return jsonify({"success": False, "error": str(e)}), 500
 # =========================================
 
