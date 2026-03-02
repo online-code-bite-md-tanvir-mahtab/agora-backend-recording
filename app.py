@@ -433,7 +433,12 @@ def inbound_call():
     # for fcm push notifications to Flutter app, you can send the call_sid or other identifiers here so your app can correlate and display incoming call UI
 # 1. Find FCM token for the user who owns this Twilio number
     # Replace with your real DB lookup
-    user_fcm_token = db.users.find_one({'twilio_number': "+15078703438"})['fcm_token']  # ← get from your database
+    user_fcm_token = ""  # ← get from your database
+    doc = db.collection('users').document("user123").get()
+
+    if doc.exists:
+        user_data = doc.to_dict()
+        user_fcm_token = user_data.get('fcm_token')
 
     if user_fcm_token:
         message = messaging.Message(
@@ -538,6 +543,31 @@ def save_fcm_token():
         print(f"Save FCM error: {str(e)}")
         import traceback
         traceback.print_exc()  # shows full stack trace in logs
+        return jsonify({"success": False, "error": str(e)}), 500
+    
+
+@app.route('/get-fcm-tokens', methods=['POST'])
+def get_fcm_tokens():
+    try:
+        data = request.get_json()
+        user_ids = data.get('userIds', [])
+        
+        if not user_ids:
+            return jsonify({"success": False, "error": "userIds array is required"}), 400
+        
+        tokens = {}
+        for user_id in user_ids:
+            doc = db.collection('users').document(user_id).get()
+            if doc.exists:
+                user_data = doc.to_dict()
+                tokens[user_id] = user_data.get('fcm_token')
+            else:
+                tokens[user_id] = None
+        
+        return jsonify({"success": True, "tokens": tokens}), 200
+    
+    except Exception as e:
+        print(f"Get FCM tokens error: {str(e)}")
         return jsonify({"success": False, "error": str(e)}), 500
 # =========================================
 
