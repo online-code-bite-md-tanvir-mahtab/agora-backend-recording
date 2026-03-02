@@ -512,10 +512,11 @@ def save_fcm_token():
 
     # Save to your database (e.g. Firebase Firestore, MongoDB, PostgreSQL)
     # Example pseudo-code
-    db.collection('users').document(user_id).set({
-        'fcmToken': fcm_token,
-        'deviceType': device_type
-    }, merge=True)
+    db.users.update_one(
+        {'user_id': user_id},
+        {'$set': {'fcm_token': fcm_token, 'device_type': device_type}},
+        upsert=True
+    )
 
     print(f"Saved FCM token for user {user_id}: {fcm_token}")
     return jsonify({"status": "success"}), 200
