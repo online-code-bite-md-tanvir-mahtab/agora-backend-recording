@@ -510,7 +510,7 @@ def inbound_call():
             APP_ID,
             APP_CERTIFICATE,
             "test_channel",
-            "0",
+            0,
             1,
             int(datetime.datetime.now().timestamp()) + 86400
         )
