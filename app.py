@@ -502,12 +502,25 @@ def get_agora_token():
     
 
 
+# Global in-memory storage for active calls (Vercel single-instance safe for now)
+active_calls = {}  # key: call_sid, value: {'from': ..., 'channel': ..., 'status': 'active'}
+
 @app.route("/inbound", methods=["POST"])
 def inbound_call():
     from_number = request.values.get("From")
     call_sid = request.values.get("CallSid")
 
     print(f"Incoming call from {from_number} - SID: {call_sid}")
+
+    # === NEW: Store call SID when call arrives ===
+    active_calls[call_sid] = {
+        'from': from_number,
+        'channel': "test_channel",
+        'status': 'active',
+        'timestamp': datetime.datetime.now().isoformat()
+    }
+    print(f"Stored active call SID: {call_sid}")
+
     token  = RtcTokenBuilder.buildTokenWithUid(
             APP_ID,
             APP_CERTIFICATE,
