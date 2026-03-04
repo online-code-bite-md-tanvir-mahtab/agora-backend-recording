@@ -500,27 +500,28 @@ def get_agora_token():
         print(f"Retrieve error: {e}")
         return jsonify({"success": False, "error": str(e)}), 500
     
+
+
 @app.route("/inbound", methods=["POST"])
 def inbound_call():
     from_number = request.values.get("From")
     call_sid = request.values.get("CallSid")
 
     print(f"Incoming call from {from_number} - SID: {call_sid}")
-    token  = RtcTokenBuilder.buildTokenWithUid(
-            APP_ID,
-            APP_CERTIFICATE,
-            "test_channel",
-            0,
-            1,
-            int(datetime.datetime.now().timestamp()) + 86400
-        )
-    # New collection name: 'agora_tokens'
-    # Document ID: user_id or phone or auto-generated
-    doc_id = from_number if from_number else f"unknown_0_{int(datetime.datetime.now().timestamp())}"
 
-    doc_ref = db.collection('agora_tokens').document(doc_id)
+    # 1. Generate fresh Agora RTC token
+    token = RtcTokenBuilder.buildTokenWithUid(
+        APP_ID,
+        APP_CERTIFICATE,
+        "test_channel",
+        0,
+        1,  # Role_Subscriber = 1
+        int(datetime.datetime.now().timestamp()) + 86400  # 24 hours
+    )
 
-    doc_ref.set({
+    # 2. Save Agora token in 'agora_tokens' (as you already do)
+    doc_id = from_number if from_number else f"unknown_{int(datetime.datetime.now().timestamp())}"
+    db.collection('agora_tokens').document(doc_id).set({
         'rtcToken': token,
         'channel': "test_channel",
         'uid': "0",
@@ -529,68 +530,40 @@ def inbound_call():
         'updatedAt': firestore.SERVER_TIMESTAMP,
     }, merge=True)
 
-    print(f"Token saved in 'agora_tokens/{doc_id}'")
+    print(f"Agora token saved in 'agora_tokens/{doc_id}'")
 
-    # 1. Generate the SIP URI for this session
-    resp = requests.post(
-        'https://sipcm.agora.io/v1/api/pstn',
-        headers={
-            'Authorization': 'Basic kV7mZp3xBw1QrT9nYj6Lf2HcUo8EgS4dAiX5tR',
-            'Content-Type': 'application/json'
-        },
-        json={
-            "action": "inboundsip",
-            "appid": APP_ID,
-            "token": token,
-            "uid": "0",
-            "channel": "test_channel",  # or dynamic
-            "region": "AREA_CODE_NA"
-        }
-    )
+    # 3. NEW: Store active call info in 'active_calls' collection
+    active_call_ref = db.collection('active_calls').document(call_sid)
+    active_call_ref.set({
+        'call_sid': call_sid,
+        'from_number': from_number,
+        'channel': "test_channel",
+        'agora_token_doc_id': doc_id,
+        'status': 'active',
+        'started_at': firestore.SERVER_TIMESTAMP,
+        'last_updated': firestore.SERVER_TIMESTAMP,
+    }, merge=True)
 
-    if resp.status_code != 200:
-        print("Failed to get SIP URI:", resp.text)
-        # Fallback TwiML
-        vr = VoiceResponse()
-        vr.say("Sorry, we couldn't connect you right now.")
-        vr.hangup()
-        return Response(str(vr), mimetype="text/xml")
+    print(f"Active call stored: call_sid={call_sid}, from={from_number}")
 
-    sip_data = resp.json()
-    sip_uri = sip_data.get("sip")
-
-    if not sip_uri:
-        print("No SIP URI returned")
-        vr = VoiceResponse()
-        vr.say("Sorry, connection failed.")
-        vr.hangup()
-        return Response(str(vr), mimetype="text/xml")
-
-    print("Using SIP URI:", sip_uri)
-    
-    # Fetch FCM token once
+    # 4. Fetch FCM token (your existing logic - fixed)
     users_ref = db.collection('users')
     query = users_ref.where(filter=FieldFilter('phoneNumber', '==', "+15078703438")).limit(1)
     docs = query.get()
 
-    # for fcm push notifications to Flutter app, you can send the call_sid or other identifiers here so your app can correlate and display incoming call UI
-# 1. Find FCM token for the user who owns this Twilio number
-    # Replace with your real DB lookup
     user_fcm_token = None
-    user_id = None
-
     if docs:
         user_doc = docs[0]
         user_data = user_doc.to_dict()
-        user_fcm_token = user_data.get('fcmToken')
-        user_id = user_doc.id  # the document ID (user123)
-
+        user_fcm_token = user_data.get('fcm_token')  # ← match field name
         if user_fcm_token:
-            print(f"FCM token found for user {user_id} (phone {from_number}): {user_fcm_token[:10]}...")
+            print(f"FCM token found: {user_fcm_token[:10]}...")
         else:
-            print(f"User {user_id} has no fcmToken field")
+            print("No 'fcm_token' field")
     else:
-        print(f"No user found with phoneNumber {from_number}")
+        print(f"No user found with phoneNumber +15078703438")
+
+    # 5. Send push if token exists
     if user_fcm_token:
         message = messaging.Message(
             notification=messaging.Notification(
@@ -601,16 +574,10 @@ def inbound_call():
                 'call_sid': call_sid,
                 'caller': from_number,
                 'type': 'incoming_call',
-                'channel': 'test_channel'  # or dynamic
+                'channel': 'test_channel'
             },
             token=user_fcm_token,
-            android=messaging.AndroidConfig(
-                priority='high',
-                notification=messaging.AndroidNotification(
-                    sound='default',
-                    channel_id='call_notifications'  # create high-priority channel in app
-                )
-            ),
+            android=messaging.AndroidConfig(priority='high'),
             apns=messaging.APNSConfig(
                 payload=messaging.APNSPayload(
                     aps=messaging.Aps(
@@ -625,19 +592,53 @@ def inbound_call():
 
         try:
             response = messaging.send(message)
-            print("FCM push sent successfully:", response)
+            print("FCM push sent:", response)
         except Exception as e:
             print("FCM push failed:", e)
-    # 2. Return TwiML to bridge to the returned SIP URI
+
+    # 6. Agora SIP bridge (your existing logic)
+    resp = requests.post(
+        'https://sipcm.agora.io/v1/api/pstn',
+        headers={
+            'Authorization': 'Basic kV7mZp3xBw1QrT9nYj6Lf2HcUo8EgS4dAiX5tR',
+            'Content-Type': 'application/json'
+        },
+        json={
+            "action": "inboundsip",
+            "appid": APP_ID,
+            "token": token,
+            "uid": "0",
+            "channel": "test_channel",
+            "region": "AREA_CODE_NA"
+        }
+    )
+
+    if resp.status_code != 200:
+        print("Failed to get SIP URI:", resp.text)
+        vr = VoiceResponse()
+        vr.say("Sorry, we couldn't connect you right now.")
+        vr.hangup()
+        return Response(str(vr), mimetype="text/xml")
+
+    sip_data = resp.json()
+    sip_uri = sip_data.get("sip")
+
+    if not sip_uri:
+        vr = VoiceResponse()
+        vr.say("Sorry, connection failed.")
+        vr.hangup()
+        return Response(str(vr), mimetype="text/xml")
+
+    print("Using SIP URI:", sip_uri)
+
     vr = VoiceResponse()
     vr.say("Connecting you now. Please hold.", voice="Polly.Joanna")
 
-    dial = Dial(callerId="+15078703438")  # optional - your caller ID
+    dial = Dial(callerId="+15078703438")
     dial.sip(sip_uri)
     dial.timeout = 60
 
     vr.append(dial)
-
     vr.say("The session has ended. Goodbye.")
 
     return Response(str(vr), mimetype="text/xml")
@@ -657,6 +658,22 @@ def call_lookup():
         "uid": 0,
         "token": TOKEN
     })
+
+
+@app.route('/end-call', methods=['POST'])
+def end_call():
+    data = request.get_json()
+    call_sid = data.get('call_sid')
+    if not call_sid:
+        return jsonify({"success": False, "error": "call_sid required"}), 400
+
+    # Force hangup via Twilio
+    client.calls(call_sid).update(status='completed')
+
+    # Update Firestore
+    db.collection('active_calls').document(call_sid).update({'status': 'ended'})
+
+    return jsonify({"success": True})
 
 
 # =========================================
