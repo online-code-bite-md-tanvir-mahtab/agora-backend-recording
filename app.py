@@ -551,17 +551,23 @@ def inbound_call():
     query = users_ref.where(filter=FieldFilter('phoneNumber', '==', "+15078703438")).limit(1)
     docs = query.get()
 
+        # for fcm push notifications to Flutter app, you can send the call_sid or other identifiers here so your app can correlate and display incoming call UI
+# 1. Find FCM token for the user who owns this Twilio number
+    # Replace with your real DB lookup
     user_fcm_token = None
+    user_id = None
     if docs:
         user_doc = docs[0]
         user_data = user_doc.to_dict()
-        user_fcm_token = user_data.get('fcm_token')  # ← match field name
+        user_fcm_token = user_data.get('fcmToken')
+        user_id = user_doc.id  # the document ID (user123)
+
         if user_fcm_token:
-            print(f"FCM token found: {user_fcm_token[:10]}...")
+            print(f"FCM token found for user {user_id} (phone {from_number}): {user_fcm_token[:10]}...")
         else:
-            print("No 'fcm_token' field")
+            print(f"User {user_id} has no fcmToken field")
     else:
-        print(f"No user found with phoneNumber +15078703438")
+        print(f"No user found with phoneNumber {from_number}")
 
     # 5. Send push if token exists
     if user_fcm_token:
@@ -577,7 +583,13 @@ def inbound_call():
                 'channel': 'test_channel'
             },
             token=user_fcm_token,
-            android=messaging.AndroidConfig(priority='high'),
+            android=messaging.AndroidConfig(
+                priority='high',
+                notification=messaging.AndroidNotification(
+                    sound='default',
+                    channel_id='call_notifications'  # create high-priority channel in app
+                )
+            ),
             apns=messaging.APNSConfig(
                 payload=messaging.APNSPayload(
                     aps=messaging.Aps(
