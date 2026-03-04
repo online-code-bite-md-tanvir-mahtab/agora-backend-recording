@@ -92,7 +92,7 @@ def agora_auth():
 def home():
     return "Agora Cloud Recording API is running!"
 
-@app.route('/token', methods=['POST'])
+@app.route('/tokens', methods=['POST'])
 def get_access_token():
     identity = request.json.get('identity')  # e.g. "user_123" — must match what you register in Flutter
     if not identity:
@@ -360,10 +360,10 @@ def generate_token():
         token = RtcTokenBuilder.buildTokenWithUid(
             APP_ID,
             APP_CERTIFICATE,
-            channel_name,
-            uid,
-            role,
-            privilege_expired_ts
+            "test_channel",
+            0,
+            1,
+            int(datetime.datetime.now().timestamp()) + 86400
         )
         print("Generated Agora token:", token)
 
