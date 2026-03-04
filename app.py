@@ -676,18 +676,43 @@ def call_lookup():
 
 @app.route('/end-call', methods=['POST'])
 def end_call():
-    data = request.get_json()
-    call_sid = data.get('call_sid')
-    if not call_sid:
-        return jsonify({"success": False, "error": "call_sid required"}), 400
+    try:
+        data = request.get_json()
+        call_sid = data.get('call_sid')
 
-    # Force hangup via Twilio
-    client.calls(call_sid).update(status='completed')
+        if not call_sid:
+            return jsonify({"success": False, "error": "call_sid required"}), 400
 
-    # Update Firestore
-    db.collection('active_calls').document(call_sid).update({'status': 'ended'})
+        doc_ref = db.collection('active_calls').document(call_sid)
 
-    return jsonify({"success": True})
+        # Check if document exists before update
+        doc = doc_ref.get()
+
+        if not doc.exists:
+            print(f"No active call document found for SID {call_sid}")
+            # Still attempt Twilio hangup (in case it's active)
+            try:
+                client.calls(call_sid).update(status='completed')
+                print(f"Twilio call {call_sid} force-ended even without Firestore doc")
+            except Exception as twilio_err:
+                print(f"Twilio hangup failed: {twilio_err}")
+            return jsonify({"success": True, "message": "Call ended (no Firestore doc)"}), 200
+
+        # Document exists → safe to update
+        doc_ref.update({'status': 'ended', 'ended_at': firestore.SERVER_TIMESTAMP})
+
+        # Force hangup via Twilio
+        try:
+            client.calls(call_sid).update(status='completed')
+            print(f"Call {call_sid} ended successfully")
+        except Exception as e:
+            print(f"Twilio hangup failed: {e}")
+
+        return jsonify({"success": True, "message": "Call ended"}), 200
+
+    except Exception as e:
+        print(f"End call error: {str(e)}")
+        return jsonify({"success": False, "error": str(e)}), 500
 
 
 # =========================================
