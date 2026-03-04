@@ -191,7 +191,8 @@ def start():
                 "channelType": 0,             # 0 = communication mode
                 "audioProfile": 0,            # Default audio quality
                 "audioCodecProfile": 0,
-                "postponeTranscoding": True   # Helps with MP4 generation
+                "postponeTranscoding": True,   # Helps with MP4 generation
+                "enableAudioAnnouncement": True,
             },
             "recordingFileConfig": {
                 "avFileType": ["hls", "mp4"]  # Required for MP4 output in mix mode
