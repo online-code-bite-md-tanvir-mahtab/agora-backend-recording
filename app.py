@@ -361,10 +361,10 @@ def generate_token():
         token = RtcTokenBuilder.buildTokenWithUid(
             APP_ID,
             APP_CERTIFICATE,
-            channel_name,
-            uid,
-            role,
-            privilege_expired_ts
+            "test_channel",
+            0,
+            1,
+            int(datetime.datetime.now().timestamp()) + 86400
         )
         print("Generated Agora token:", token)
 
