@@ -418,6 +418,10 @@ def pstn_webhook():
         print("AUDIO BRIDGE SUCCESSFULLY STARTED!")
     elif data.get('event') == 'agora_bridge_end':
         print("Bridge ended")
+    elif data.get('event') == 'call_hangup':
+        print("Call was hung up by the user")
+    elif data.get('event') == 'agora_bridge_failed':
+        print("Bridge failed to start")
     return '', 204
 
 # Optional: Status callback if you want to trigger Agora recording start/stop
